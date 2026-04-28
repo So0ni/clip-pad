@@ -49,7 +49,7 @@ func NewService(db *sql.DB, cfg Config) *Service {
 	}
 }
 
-func (s *Service) Create(ctx context.Context, content, expireMode, realIP string) (*Paste, error) {
+func (s *Service) Create(ctx context.Context, content, expireMode, theme, realIP string) (*Paste, error) {
 	if strings.TrimSpace(content) == "" {
 		return nil, ErrContentRequired
 	}
@@ -98,6 +98,7 @@ func (s *Service) Create(ctx context.Context, content, expireMode, realIP string
 		ExpiresAt:     expiresAt,
 		BurnAfterRead: burnAfterRead,
 		CreatedAt:     now,
+		Theme:         normalizeTheme(theme),
 	}
 
 	for attempt := 0; attempt < maxIDRetries; attempt++ {
@@ -107,9 +108,9 @@ func (s *Service) Create(ctx context.Context, content, expireMode, realIP string
 		}
 		created.ID = id
 		_, err = tx.ExecContext(ctx, `
-INSERT INTO pastes(id, content, content_bytes, expire_mode, expires_at, burn_after_read, created_at, viewed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-`, created.ID, created.Content, created.ContentBytes, created.ExpireMode, created.ExpiresAt, boolToInt(created.BurnAfterRead), created.CreatedAt)
+INSERT INTO pastes(id, content, content_bytes, expire_mode, expires_at, burn_after_read, created_at, viewed_at, theme)
+VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
+`, created.ID, created.Content, created.ContentBytes, created.ExpireMode, created.ExpiresAt, boolToInt(created.BurnAfterRead), created.CreatedAt, created.Theme)
 		if err == nil {
 			if commitErr := tx.Commit(); commitErr != nil {
 				return nil, fmt.Errorf("commit create paste transaction: %w", commitErr)
@@ -212,7 +213,7 @@ func (s *Service) loadPaste(ctx context.Context, db queryer, id string) (*Paste,
 	var viewedAt sql.NullTime
 	var burnAfterRead int
 	err := db.QueryRowContext(ctx, `
-SELECT id, content, content_bytes, expire_mode, expires_at, burn_after_read, created_at, viewed_at
+SELECT id, content, content_bytes, expire_mode, expires_at, burn_after_read, created_at, viewed_at, theme
 FROM pastes WHERE id = ?
 `, id).Scan(
 		&paste.ID,
@@ -223,6 +224,7 @@ FROM pastes WHERE id = ?
 		&burnAfterRead,
 		&paste.CreatedAt,
 		&viewedAt,
+		&paste.Theme,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -307,6 +309,15 @@ func isExpired(expiresAt *time.Time, now time.Time) bool {
 
 func isUniqueConstraint(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
+
+func normalizeTheme(theme string) string {
+	switch theme {
+	case ThemeBlue, ThemeMilk:
+		return theme
+	default:
+		return ThemeWarm
+	}
 }
 
 func boolToInt(value bool) int {

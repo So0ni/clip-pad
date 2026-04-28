@@ -7,6 +7,9 @@
   <meta name="robots" content="noindex,nofollow">
   <title>ClipPad</title>
   <link rel="stylesheet" href="/static/style.css">
+  <script>
+    (function(){var t=localStorage.getItem('clip-pad-theme');if(t==='blue'||t==='milk'||t==='warm')document.documentElement.setAttribute('data-theme',t);})();
+  </script>
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -27,6 +30,11 @@
         <a href="/" class="nav-link {{if eq .CurrentPage "paste-bin"}}is-active{{end}}">Paste-bin</a>
         <a href="/notepad" class="nav-link {{if eq .CurrentPage "notepad"}}is-active{{end}}">Simple Notepad</a>
       </nav>
+      <div class="theme-switcher" aria-label="Color theme">
+        <button class="theme-btn" data-theme-btn="warm" title="Warm"></button>
+        <button class="theme-btn" data-theme-btn="blue" title="Light Blue"></button>
+        <button class="theme-btn" data-theme-btn="milk" title="Milky White"></button>
+      </div>
     </header>
     {{template "content" .}}
   </div>

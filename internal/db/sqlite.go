@@ -50,7 +50,8 @@ expire_mode TEXT NOT NULL,
 expires_at DATETIME,
 burn_after_read INTEGER NOT NULL DEFAULT 0,
 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-viewed_at DATETIME
+viewed_at DATETIME,
+theme TEXT NOT NULL DEFAULT 'warm'
 );`,
 		`CREATE INDEX IF NOT EXISTS idx_pastes_expires_at ON pastes(expires_at);`,
 		`CREATE INDEX IF NOT EXISTS idx_pastes_created_at ON pastes(created_at);`,
@@ -66,6 +67,17 @@ PRIMARY KEY (bucket, key)
 	for _, statement := range statements {
 		if _, err := database.ExecContext(ctx, statement); err != nil {
 			return fmt.Errorf("initialize sqlite schema: %w", err)
+		}
+	}
+
+	// Migration: add theme column to databases created before this feature.
+	var themeColCount int
+	if err := database.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('pastes') WHERE name = 'theme'`).Scan(&themeColCount); err != nil {
+		return fmt.Errorf("check paste theme column: %w", err)
+	}
+	if themeColCount == 0 {
+		if _, err := database.ExecContext(ctx, `ALTER TABLE pastes ADD COLUMN theme TEXT NOT NULL DEFAULT 'warm'`); err != nil {
+			return fmt.Errorf("migrate paste theme column: %w", err)
 		}
 	}
 

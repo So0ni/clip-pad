@@ -1,15 +1,15 @@
 {{define "content"}}
-<main class="page" data-page="paste">
+<main class="page" data-page="paste" data-paste-theme="{{.Paste.Theme}}">
   <section class="card">
     <h1>Paste</h1>
     <dl class="meta-grid">
       <div>
         <dt>Created</dt>
-        <dd>{{formatTimeValue .Paste.CreatedAt}}</dd>
+        <dd><time data-utc="{{formatTimeValue .Paste.CreatedAt}}">{{formatTimeValue .Paste.CreatedAt}}</time></dd>
       </div>
       <div>
         <dt>Expires</dt>
-        <dd>{{if .Paste.ExpiresAt}}{{formatTime .Paste.ExpiresAt}}{{else}}Burn after reading{{end}}</dd>
+        <dd>{{if .Paste.ExpiresAt}}<time data-utc="{{formatTime .Paste.ExpiresAt}}">{{formatTime .Paste.ExpiresAt}}</time>{{else}}Burn after reading{{end}}</dd>
       </div>
     </dl>
     <div class="paste-view">
