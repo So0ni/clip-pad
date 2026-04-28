@@ -140,6 +140,7 @@
     var result     = document.getElementById('paste-result');
     var urlInput   = document.getElementById('paste-url');
     var copyBtn    = document.getElementById('copy-url-btn');
+    var qrBtn      = document.getElementById('qr-url-btn');
     var textarea   = document.getElementById('paste-content');
     var charCount  = document.getElementById('paste-charcount');
 
@@ -185,6 +186,14 @@
         copyText(urlInput.value, copyBtn, 'Copied!');
       });
     }
+
+    if (qrBtn) {
+      qrBtn.addEventListener('click', function () {
+        showQRModal(urlInput.value);
+      });
+    }
+
+    initQRModal();
 
     function setFeedback(msg, cls) {
       feedback.textContent = msg;
@@ -317,6 +326,48 @@
     });
 
     updateStats();
+  }
+
+  // ---- QR Code ----
+
+  function initQRModal() {
+    var modal    = document.getElementById('qr-modal');
+    var closeBtn = document.getElementById('qr-modal-close');
+    var backdrop = modal && modal.querySelector('.qr-modal-backdrop');
+    if (!modal) return;
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      var canvas = document.getElementById('qr-canvas');
+      if (canvas) canvas.innerHTML = '';
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+  }
+
+  function showQRModal(url) {
+    var modal  = document.getElementById('qr-modal');
+    var canvas = document.getElementById('qr-canvas');
+    if (!modal || !canvas) return;
+    canvas.innerHTML = '';
+    new QRCode(canvas, {
+      text: url,
+      width: 200,
+      height: 200,
+      colorDark: '#2f2f2f',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    modal.classList.remove('hidden');
+    var closeBtn = document.getElementById('qr-modal-close');
+    if (closeBtn) closeBtn.focus();
   }
 
   // ---- Copy helper ----

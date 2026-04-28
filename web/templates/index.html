@@ -32,9 +32,34 @@
         <div class="copy-row">
           <input id="paste-url" type="text" readonly aria-label="Paste URL">
           <button type="button" class="button button-secondary button-sm" id="copy-url-btn">Copy</button>
+          <button type="button" class="button button-secondary button-sm button-icon" id="qr-url-btn" title="Show QR Code" aria-label="Show QR Code">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/>
+              <rect x="3" y="3" width="1" height="1" fill="currentColor"/>
+              <rect x="10" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/>
+              <rect x="12" y="3" width="1" height="1" fill="currentColor"/>
+              <rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/>
+              <rect x="3" y="12" width="1" height="1" fill="currentColor"/>
+              <rect x="10" y="10" width="2" height="2" fill="currentColor"/>
+              <rect x="13" y="10" width="2" height="2" fill="currentColor"/>
+              <rect x="10" y="13" width="2" height="2" fill="currentColor"/>
+              <rect x="13" y="13" width="2" height="2" fill="currentColor"/>
+            </svg>
+          </button>
         </div>
       </div>
     </form>
   </section>
 </main>
+
+<div id="qr-modal" class="qr-modal hidden" role="dialog" aria-modal="true" aria-label="QR Code">
+  <div class="qr-modal-backdrop"></div>
+  <div class="qr-modal-box">
+    <button type="button" class="qr-modal-close" id="qr-modal-close" aria-label="Close QR Code">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <p class="qr-modal-label">Scan to open</p>
+    <div id="qr-canvas"></div>
+  </div>
+</div>
 {{end}}
