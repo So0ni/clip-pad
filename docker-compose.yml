@@ -1,0 +1,22 @@
+services:
+  clippad:
+    image: clippad:latest
+    container_name: clippad
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      - CLIPPAD_ADDR=:8080
+      - CLIPPAD_DB_PATH=/data/clippad.db
+      - CLIPPAD_MAX_PASTE_SIZE=1048576
+      - CLIPPAD_MAX_TOTAL_CONTENT_BYTES=1073741824
+      - CLIPPAD_RATE_LIMIT_PER_IP_PER_MINUTE=10
+      - CLIPPAD_RATE_LIMIT_PER_IP_PER_DAY=100
+      - CLIPPAD_RATE_LIMIT_GLOBAL_PER_DAY=5000
+      - CLIPPAD_TRUST_CLOUDFLARE=true
+      - CLIPPAD_TRUST_PROXY_HEADERS=true
+    restart: unless-stopped
