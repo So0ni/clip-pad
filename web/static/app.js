@@ -3,24 +3,101 @@
   // ---- Theme ----
 
   var VALID_THEMES = ['warm', 'blue', 'milk'];
+  var THEME_LABELS = {
+    warm: 'Warm',
+    blue: 'Blue',
+    milk: 'Milk'
+  };
+  var updateThemePickerDisplay = function () {};
 
   function initTheme() {
+    var pickerButton = document.getElementById('theme-picker-button');
+    var pickerMenu = document.getElementById('theme-picker-menu');
+    var pickerLabel = document.querySelector('[data-theme-trigger-label]');
+    var pickerSwatch = document.querySelector('[data-theme-trigger-swatch]');
     var saved = localStorage.getItem('clip-pad-theme') || 'warm';
+
+    updateThemePickerDisplay = function (theme) {
+      if (pickerLabel) pickerLabel.textContent = THEME_LABELS[theme] || 'Warm';
+      if (pickerSwatch) pickerSwatch.setAttribute('data-theme-swatch', theme);
+    };
+
     applyTheme(saved, false);
-    document.querySelectorAll('[data-theme-btn]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        applyTheme(btn.dataset.themeBtn, true);
+
+    if (!pickerButton || !pickerMenu) return;
+
+    document.querySelectorAll('[data-theme-option]').forEach(function (option, index) {
+      option.addEventListener('click', function () {
+        applyTheme(option.dataset.themeOption, true);
+        closeThemeMenu();
+        pickerButton.focus();
+      });
+
+      option.addEventListener('keydown', function (event) {
+        var options = Array.prototype.slice.call(document.querySelectorAll('[data-theme-option]'));
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          var nextIndex = index + (event.key === 'ArrowDown' ? 1 : -1);
+          if (nextIndex < 0) nextIndex = options.length - 1;
+          if (nextIndex >= options.length) nextIndex = 0;
+          options[nextIndex].focus();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          closeThemeMenu();
+          pickerButton.focus();
+        }
       });
     });
+
+    pickerButton.addEventListener('click', function () {
+      if (pickerMenu.classList.contains('hidden')) {
+        openThemeMenu();
+      } else {
+        closeThemeMenu();
+      }
+    });
+
+    pickerButton.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openThemeMenu();
+      } else if (event.key === 'Escape') {
+        closeThemeMenu();
+      }
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('.theme-switcher')) closeThemeMenu();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closeThemeMenu();
+    });
+
+    function openThemeMenu() {
+      pickerMenu.classList.remove('hidden');
+      pickerButton.setAttribute('aria-expanded', 'true');
+      var activeOption = document.querySelector('[data-theme-option].is-active');
+      if (activeOption) activeOption.focus();
+    }
+
+    function closeThemeMenu() {
+      pickerMenu.classList.add('hidden');
+      pickerButton.setAttribute('aria-expanded', 'false');
+    }
+
   }
 
   function applyTheme(theme, save) {
     if (VALID_THEMES.indexOf(theme) === -1) theme = 'warm';
     document.documentElement.setAttribute('data-theme', theme);
     if (save) localStorage.setItem('clip-pad-theme', theme);
-    document.querySelectorAll('[data-theme-btn]').forEach(function (btn) {
-      btn.classList.toggle('is-active', btn.dataset.themeBtn === theme);
+    document.querySelectorAll('[data-theme-option]').forEach(function (option) {
+      var isActive = option.dataset.themeOption === theme;
+      option.classList.toggle('is-active', isActive);
+      option.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
+    updateThemePickerDisplay(theme);
   }
 
   function currentTheme() {
@@ -211,20 +288,18 @@
       setMaximized(location.hash === '#max');
     }
 
+    function updateHashState(isMax) {
+      var url = location.pathname + location.search + (isMax ? '#max' : '');
+      history.pushState({ notepadMax: isMax }, '', url);
+      syncFromHash();
+    }
+
     syncFromHash();
     window.addEventListener('hashchange', syncFromHash);
+    window.addEventListener('popstate', syncFromHash);
 
     maxBtn.addEventListener('click', function () {
-      var isMax = document.documentElement.classList.contains('notepad-max');
-      if (isMax) {
-        // Remove the #max hash; pushState adds a history entry so browser
-        // Back returns the user to the maximized view.
-        history.pushState('', '', location.pathname);
-        setMaximized(false);
-      } else {
-        location.hash = '#max';
-        // hashchange fires and calls syncFromHash automatically.
-      }
+      updateHashState(!document.documentElement.classList.contains('notepad-max'));
     });
 
     textarea.addEventListener('input', updateStats);
