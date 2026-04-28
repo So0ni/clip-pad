@@ -34,6 +34,7 @@ type pageData struct {
 type createRequest struct {
 	Content string `json:"content"`
 	Expire  string `json:"expire"`
+	Theme   string `json:"theme"`
 }
 
 type errorResponse struct {
@@ -107,7 +108,7 @@ func (h *Handler) CreatePaste(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	created, err := h.service.Create(req.Context(), body.Content, body.Expire, appmiddleware.GetRealIP(req))
+	created, err := h.service.Create(req.Context(), body.Content, body.Expire, body.Theme, appmiddleware.GetRealIP(req))
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrContentRequired):

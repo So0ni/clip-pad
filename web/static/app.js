@@ -1,4 +1,51 @@
 (function () {
+
+  // ---- Theme ----
+
+  var VALID_THEMES = ['warm', 'blue', 'milk'];
+
+  function initTheme() {
+    var saved = localStorage.getItem('clip-pad-theme') || 'warm';
+    applyTheme(saved, false);
+    document.querySelectorAll('[data-theme-btn]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyTheme(btn.dataset.themeBtn, true);
+      });
+    });
+  }
+
+  function applyTheme(theme, save) {
+    if (VALID_THEMES.indexOf(theme) === -1) theme = 'warm';
+    document.documentElement.setAttribute('data-theme', theme);
+    if (save) localStorage.setItem('clip-pad-theme', theme);
+    document.querySelectorAll('[data-theme-btn]').forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.dataset.themeBtn === theme);
+    });
+  }
+
+  function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'warm';
+  }
+
+  initTheme();
+
+  // ---- Local time ----
+
+  function initLocalTimes() {
+    document.querySelectorAll('time[data-utc]').forEach(function (el) {
+      var d = new Date(el.dataset.utc);
+      if (isNaN(d.getTime())) return;
+      el.textContent = d.toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    });
+  }
+
+  initLocalTimes();
+
+  // ---- Page init ----
+
   var page = document.querySelector('[data-page]');
   if (!page) return;
 
@@ -6,7 +53,7 @@
   if (p === 'index')   initPasteForm();
   if (p === 'burn')    initBurnReveal(page.dataset.revealUrl);
   if (p === 'notepad') initNotepad();
-  if (p === 'paste')   initPasteView();
+  if (p === 'paste')   initPasteView(page.dataset.pasteTheme);
 
   // ---- Paste form ----
 
@@ -32,7 +79,8 @@
 
       var payload = {
         content: textarea ? textarea.value : '',
-        expire: document.getElementById('paste-expire').value
+        expire: document.getElementById('paste-expire').value,
+        theme: currentTheme()
       };
 
       try {
@@ -116,7 +164,13 @@
 
   // ---- Paste view ----
 
-  function initPasteView() {
+  function initPasteView(pasteTheme) {
+    // Apply the creator's stored theme for this page without overwriting the
+    // visitor's own preference in localStorage.
+    if (pasteTheme && VALID_THEMES.indexOf(pasteTheme) !== -1) {
+      applyTheme(pasteTheme, false);
+    }
+
     var copyBtn = document.getElementById('copy-content-btn');
     var pre     = document.getElementById('paste-content-text');
     if (copyBtn && pre) {

@@ -9,6 +9,10 @@ const (
 	ExpireBurn     = "burn"
 	defaultIDLen   = 8
 	maxIDRetries   = 5
+
+	ThemeWarm = "warm"
+	ThemeBlue = "blue"
+	ThemeMilk = "milk"
 )
 
 type Paste struct {
@@ -20,6 +24,7 @@ type Paste struct {
 	BurnAfterRead bool
 	CreatedAt     time.Time
 	ViewedAt      *time.Time
+	Theme         string
 }
 
 type CreateResponse struct {
