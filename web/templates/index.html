@@ -1,0 +1,33 @@
+{{define "content"}}
+<main class="page" data-page="index">
+  <section class="card hero">
+    <h1>Paste-bin</h1>
+    <p class="muted">Paste plain text, choose an expiration mode, and get a short shareable URL.</p>
+    <form id="paste-form" class="stack" novalidate>
+      <label class="field">
+        <span>Content</span>
+        <textarea id="paste-content" name="content" rows="14" maxlength="1048576" placeholder="Paste plain text here" required></textarea>
+      </label>
+      <div class="form-row">
+        <label class="field compact">
+          <span>Auto destroy</span>
+          <select id="paste-expire" name="expire">
+            <option value="1d">1 day</option>
+            <option value="7d">7 days</option>
+            <option value="30d">30 days</option>
+            <option value="burn">Burn after reading</option>
+          </select>
+        </label>
+        <button type="submit" class="button">Create Paste</button>
+      </div>
+      <p id="paste-feedback" class="feedback" aria-live="polite"></p>
+      <div id="paste-result" class="result hidden">
+        <label class="field compact">
+          <span>Share URL</span>
+          <input id="paste-url" type="text" readonly>
+        </label>
+      </div>
+    </form>
+  </section>
+</main>
+{{end}}
