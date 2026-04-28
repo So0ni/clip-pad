@@ -1,16 +1,15 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 WORKDIR /app
-COPY go.mod .
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/clippad ./cmd/server
+RUN mkdir -p /out/data && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/clippad ./cmd/server
 
-FROM alpine:3.21
-RUN apk add --no-cache ca-certificates && adduser -D -u 10001 appuser && mkdir -p /data /app && chown -R appuser:appuser /data /app
+FROM scratch
 WORKDIR /app
 COPY --from=builder /out/clippad /app/clippad
 COPY --from=builder /app/web /app/web
+COPY --from=builder /out/data /data
 EXPOSE 8080
 VOLUME ["/data"]
-USER appuser
 ENTRYPOINT ["/app/clippad"]

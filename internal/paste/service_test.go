@@ -2,7 +2,6 @@ package paste
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"testing"
 	"time"

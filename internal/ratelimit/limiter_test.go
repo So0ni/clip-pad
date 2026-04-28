@@ -11,7 +11,7 @@ import (
 
 func TestLimiterPerMinutePerDayAndGlobal(t *testing.T) {
 	database := openLimiterTestDB(t)
-	limiter := New(Config{PerIPPerMinute: 2, PerIPPerDay: 3, GlobalPerDay: 4})
+	limiter := New(Config{PerIPPerMinute: 2, PerIPPerDay: 3, GlobalPerDay: 5})
 	now := time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
 	ctx := context.Background()
 
