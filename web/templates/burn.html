@@ -2,13 +2,22 @@
 <main class="page" data-page="burn" data-reveal-url="{{.RevealURL}}">
   <section class="card">
     <h1>Burn after reading</h1>
-    <p class="muted">This paste will be destroyed after you reveal it.</p>
+    <div class="warning-box">
+      <span class="warning-icon">&#128293;</span>
+      <p class="warning-text">This paste will be <strong>permanently destroyed</strong> the moment you reveal it. There is no way to recover it afterwards.</p>
+    </div>
     <button id="reveal-button" class="button" type="button">Reveal Paste</button>
     <p id="reveal-feedback" class="feedback" aria-live="polite"></p>
     <div id="reveal-result" class="hidden stack">
-      <p class="muted">The paste has now been deleted from ClipPad.</p>
+      <p class="muted" style="margin-top:16px">This paste has now been permanently deleted from ClipPad.</p>
       <div class="paste-view">
-        <pre id="reveal-content"></pre>
+        <div class="paste-toolbar">
+          <span class="paste-toolbar-label">Revealed content</span>
+          <button type="button" class="button button-secondary button-sm" id="copy-reveal-btn">Copy</button>
+        </div>
+        <div class="paste-code">
+          <pre id="reveal-content"></pre>
+        </div>
       </div>
     </div>
   </section>

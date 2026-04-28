@@ -1,125 +1,194 @@
 (function () {
-  const page = document.querySelector('[data-page]');
-  if (!page) {
-    return;
-  }
+  var page = document.querySelector('[data-page]');
+  if (!page) return;
 
-  if (page.dataset.page === 'index') {
-    initPasteForm();
-  }
+  var p = page.dataset.page;
+  if (p === 'index')   initPasteForm();
+  if (p === 'burn')    initBurnReveal(page.dataset.revealUrl);
+  if (p === 'notepad') initNotepad();
+  if (p === 'paste')   initPasteView();
 
-  if (page.dataset.page === 'burn') {
-    initBurnReveal(page.dataset.revealUrl);
-  }
-
-  if (page.dataset.page === 'notepad') {
-    initNotepad();
-  }
+  // ---- Paste form ----
 
   function initPasteForm() {
-    const form = document.getElementById('paste-form');
-    const feedback = document.getElementById('paste-feedback');
-    const result = document.getElementById('paste-result');
-    const urlInput = document.getElementById('paste-url');
+    var form       = document.getElementById('paste-form');
+    var feedback   = document.getElementById('paste-feedback');
+    var result     = document.getElementById('paste-result');
+    var urlInput   = document.getElementById('paste-url');
+    var copyBtn    = document.getElementById('copy-url-btn');
+    var textarea   = document.getElementById('paste-content');
+    var charCount  = document.getElementById('paste-charcount');
+
+    if (textarea && charCount) {
+      textarea.addEventListener('input', function () {
+        charCount.textContent = textarea.value.length.toLocaleString() + ' / 1,048,576';
+      });
+    }
 
     form.addEventListener('submit', async function (event) {
       event.preventDefault();
-      setFeedback('Creating paste...', false);
+      setFeedback('Creating paste\u2026', '');
       result.classList.add('hidden');
 
-      const payload = {
-        content: document.getElementById('paste-content').value,
+      var payload = {
+        content: textarea ? textarea.value : '',
         expire: document.getElementById('paste-expire').value
       };
 
       try {
-        const response = await fetch('/api/pastes', {
+        var response = await fetch('/api/pastes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await response.json();
+        var data = await response.json();
         if (!response.ok) {
-          setFeedback(data.error || 'Unable to create paste.', true);
+          setFeedback(data.error || 'Unable to create paste.', 'is-error');
           return;
         }
         urlInput.value = window.location.origin + data.url;
         result.classList.remove('hidden');
-        setFeedback('Paste created successfully.', false);
-      } catch (error) {
-        setFeedback('Unable to create paste right now.', true);
+        setFeedback('Paste created.', 'is-success');
+        urlInput.select();
+      } catch (_) {
+        setFeedback('Unable to create paste right now.', 'is-error');
       }
     });
 
-    function setFeedback(message, isError) {
-      feedback.textContent = message;
-      feedback.classList.toggle('is-error', Boolean(isError));
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        copyText(urlInput.value, copyBtn, 'Copied!');
+      });
+    }
+
+    function setFeedback(msg, cls) {
+      feedback.textContent = msg;
+      feedback.className = 'feedback' + (cls ? ' ' + cls : '');
     }
   }
 
+  // ---- Burn reveal ----
+
   function initBurnReveal(revealUrl) {
-    const button = document.getElementById('reveal-button');
-    const feedback = document.getElementById('reveal-feedback');
-    const result = document.getElementById('reveal-result');
-    const content = document.getElementById('reveal-content');
+    var button       = document.getElementById('reveal-button');
+    var feedback     = document.getElementById('reveal-feedback');
+    var result       = document.getElementById('reveal-result');
+    var content      = document.getElementById('reveal-content');
+    var copyRevealBtn = document.getElementById('copy-reveal-btn');
 
     button.addEventListener('click', async function () {
       button.disabled = true;
-      feedback.textContent = 'Revealing paste...';
-      feedback.classList.remove('is-error');
+      setFeedback('Revealing paste\u2026', '');
 
       try {
-        const response = await fetch(revealUrl, { method: 'POST' });
-        const data = await response.json();
+        var response = await fetch(revealUrl, { method: 'POST' });
+        var data = await response.json();
         if (!response.ok) {
           if (response.status === 404) {
             window.location.reload();
             return;
           }
-          feedback.textContent = data.error || 'Unable to reveal paste.';
-          feedback.classList.add('is-error');
+          setFeedback(data.error || 'Unable to reveal paste.', 'is-error');
           button.disabled = false;
           return;
         }
         content.textContent = data.content;
         result.classList.remove('hidden');
         button.classList.add('hidden');
-        feedback.textContent = 'Paste revealed.';
-      } catch (error) {
-        feedback.textContent = 'Unable to reveal paste right now.';
-        feedback.classList.add('is-error');
+        setFeedback('Paste revealed and permanently deleted.', 'is-success');
+
+        if (copyRevealBtn) {
+          copyRevealBtn.addEventListener('click', function () {
+            copyText(data.content, copyRevealBtn, 'Copied!');
+          });
+        }
+      } catch (_) {
+        setFeedback('Unable to reveal paste right now.', 'is-error');
         button.disabled = false;
       }
     });
+
+    function setFeedback(msg, cls) {
+      feedback.textContent = msg;
+      feedback.className = 'feedback' + (cls ? ' ' + cls : '');
+    }
   }
 
+  // ---- Paste view ----
+
+  function initPasteView() {
+    var copyBtn = document.getElementById('copy-content-btn');
+    var pre     = document.getElementById('paste-content-text');
+    if (copyBtn && pre) {
+      copyBtn.addEventListener('click', function () {
+        copyText(pre.textContent, copyBtn, 'Copied!');
+      });
+    }
+  }
+
+  // ---- Notepad ----
+
   function initNotepad() {
-    const textarea = document.getElementById('notepad-text');
-    const characters = document.getElementById('stats-characters');
-    const words = document.getElementById('stats-words');
-    const lines = document.getElementById('stats-lines');
+    var textarea   = document.getElementById('notepad-text');
+    var characters = document.getElementById('stats-characters');
+    var words      = document.getElementById('stats-words');
+    var lines      = document.getElementById('stats-lines');
 
     function updateStats() {
-      const value = textarea.value;
-      characters.textContent = String(value.length);
-      words.textContent = value.trim() === '' ? '0' : String(value.trim().split(/\s+/).length);
-      lines.textContent = value === '' ? '0' : String(value.split(/\n/).length);
+      var value = textarea.value;
+      characters.textContent = value.length.toLocaleString();
+      words.textContent = value.trim() === '' ? '0' : value.trim().split(/\s+/).length.toLocaleString();
+      lines.textContent = value === '' ? '0' : value.split(/\n/).length.toLocaleString();
     }
 
     textarea.addEventListener('input', updateStats);
     textarea.addEventListener('paste', function (event) {
       event.preventDefault();
-      const text = event.clipboardData.getData('text/plain');
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const value = textarea.value;
+      var text  = event.clipboardData.getData('text/plain');
+      var start = textarea.selectionStart;
+      var end   = textarea.selectionEnd;
+      var value = textarea.value;
       textarea.value = value.slice(0, start) + text + value.slice(end);
-      const cursor = start + text.length;
+      var cursor = start + text.length;
       textarea.selectionStart = cursor;
-      textarea.selectionEnd = cursor;
+      textarea.selectionEnd   = cursor;
       textarea.dispatchEvent(new Event('input'));
     });
 
     updateStats();
+  }
+
+  // ---- Copy helper ----
+
+  function copyText(text, btn, successLabel) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function () { flashButton(btn, successLabel); })
+        .catch(function () { legacyCopy(text); flashButton(btn, successLabel); });
+    } else {
+      legacyCopy(text);
+      flashButton(btn, successLabel);
+    }
+  }
+
+  function legacyCopy(text) {
+    var el = document.createElement('textarea');
+    el.value = text;
+    el.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    try { document.execCommand('copy'); } catch (_) {}
+    document.body.removeChild(el);
+  }
+
+  function flashButton(btn, label) {
+    var original = btn.textContent;
+    btn.textContent = label;
+    btn.disabled = true;
+    setTimeout(function () {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 1800);
   }
 })();
