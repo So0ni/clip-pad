@@ -1,0 +1,35 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ClipPad</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="site-header">
+      <a class="brand" href="/">
+        <svg class="brand-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="6" y="4" width="16" height="21" rx="3" fill="#6b8f71" opacity="0.12"/>
+          <rect x="6" y="4" width="16" height="21" rx="3" stroke="#6b8f71" stroke-width="1.8"/>
+          <rect x="10" y="2" width="8" height="5" rx="1.5" fill="#f4f1e8" stroke="#6b8f71" stroke-width="1.6"/>
+          <line x1="10" y1="13" x2="18" y2="13" stroke="#6b8f71" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="10" y1="17" x2="18" y2="17" stroke="#6b8f71" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="10" y1="21" x2="15" y2="21" stroke="#6b8f71" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        ClipPad
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="/" class="nav-link {{if eq .CurrentPage "paste-bin"}}is-active{{end}}">Paste-bin</a>
+        <a href="/notepad" class="nav-link {{if eq .CurrentPage "notepad"}}is-active{{end}}">Simple Notepad</a>
+      </nav>
+    </header>
+    {{template "content" .}}
+  </div>
+</body>
+</html>
+{{end}}

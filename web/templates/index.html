@@ -1,0 +1,40 @@
+{{define "content"}}
+<main class="page" data-page="index">
+  <section class="card">
+    <h1>Paste-bin</h1>
+    <p class="muted">Paste plain text, choose an expiration mode, and get a short shareable link.</p>
+    <form id="paste-form" class="stack" novalidate>
+      <div class="field">
+        <div class="field-label-row">
+          <label class="field-label" for="paste-content">Content</label>
+          <span id="paste-charcount" class="char-count" aria-live="polite">0 / 1,048,576</span>
+        </div>
+        <textarea id="paste-content" name="content" rows="14" maxlength="1048576" placeholder="Paste plain text here..." required></textarea>
+      </div>
+      <div class="form-row">
+        <div class="field compact">
+          <label class="field-label" for="paste-expire">Auto destroy</label>
+          <select id="paste-expire" name="expire">
+            <option value="1d">1 day</option>
+            <option value="7d">7 days</option>
+            <option value="30d">30 days</option>
+            <option value="burn">Burn after reading</option>
+          </select>
+        </div>
+        <button type="submit" class="button" id="paste-submit">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Create Paste
+        </button>
+      </div>
+      <p id="paste-feedback" class="feedback" aria-live="polite"></p>
+      <div id="paste-result" class="result-box hidden" aria-live="polite">
+        <div class="result-box-label">&#10003; Paste created</div>
+        <div class="copy-row">
+          <input id="paste-url" type="text" readonly aria-label="Paste URL">
+          <button type="button" class="button button-secondary button-sm" id="copy-url-btn">Copy</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</main>
+{{end}}

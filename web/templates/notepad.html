@@ -1,0 +1,26 @@
+{{define "content"}}
+<main class="page" data-page="notepad">
+  <section class="card">
+    <h1>Simple Notepad</h1>
+    <p class="muted">A temporary plain-text workspace. Nothing is saved &#8212; refreshing this page wipes everything.</p>
+    <div class="field">
+      <label class="field-label" for="notepad-text">Notes</label>
+      <textarea id="notepad-text" rows="18" placeholder="Start typing..."></textarea>
+    </div>
+    <div class="stats" aria-live="polite">
+      <div>
+        <strong class="stats-value" id="stats-characters">0</strong>
+        <span class="stats-label">Characters</span>
+      </div>
+      <div>
+        <strong class="stats-value" id="stats-words">0</strong>
+        <span class="stats-label">Words</span>
+      </div>
+      <div>
+        <strong class="stats-value" id="stats-lines">0</strong>
+        <span class="stats-label">Lines</span>
+      </div>
+    </div>
+  </section>
+</main>
+{{end}}
