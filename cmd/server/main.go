@@ -75,7 +75,11 @@ func main() {
 	pasteHandler.Routes(router)
 
 	fileServer := http.FileServer(http.Dir(filepath.Join("web", "static")))
-	router.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+	staticHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=86400, must-revalidate")
+		fileServer.ServeHTTP(w, r)
+	})
+	router.Handle("/static/*", http.StripPrefix("/static/", staticHandler))
 	router.Get("/", func(w http.ResponseWriter, req *http.Request) {
 		if err := renderer.Render(w, http.StatusOK, "index.html", appPageData{CurrentPage: "paste-bin"}); err != nil {
 			log.Printf("render index error: %v", err)
