@@ -584,6 +584,93 @@ select {
   transform: scale(1.25);
 }
 
+/* ---- Notepad title bar ---- */
+
+.notepad-titlebar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.notepad-titlebar > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.notepad-titlebar h1 {
+  margin-bottom: 4px;
+}
+
+.notepad-titlebar .muted {
+  margin-bottom: 0;
+}
+
+/* ---- Notepad maximized ---- */
+
+html.notepad-max,
+html.notepad-max body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html.notepad-max .site-header {
+  display: none;
+}
+
+html.notepad-max .shell {
+  max-width: none;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+html.notepad-max .page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+html.notepad-max .card {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  box-shadow: none;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+html.notepad-max .notepad-titlebar {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+html.notepad-max .field {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+html.notepad-max #notepad-text {
+  flex: 1;
+  min-height: 0 !important;
+  resize: none;
+}
+
+html.notepad-max .stats {
+  flex-shrink: 0;
+  margin-top: 10px;
+}
+
 /* ---- Utilities ---- */
 
 .hidden {

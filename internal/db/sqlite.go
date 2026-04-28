@@ -71,8 +71,12 @@ PRIMARY KEY (bucket, key)
 	}
 
 	// Migration: add theme column to databases created before this feature.
-	if _, err := database.ExecContext(ctx, `ALTER TABLE pastes ADD COLUMN theme TEXT NOT NULL DEFAULT 'warm'`); err != nil {
-		if !strings.Contains(err.Error(), "duplicate column name") {
+	var themeColCount int
+	if err := database.QueryRowContext(ctx, `SELECT COUNT(*) FROM pragma_table_info('pastes') WHERE name = 'theme'`).Scan(&themeColCount); err != nil {
+		return fmt.Errorf("check paste theme column: %w", err)
+	}
+	if themeColCount == 0 {
+		if _, err := database.ExecContext(ctx, `ALTER TABLE pastes ADD COLUMN theme TEXT NOT NULL DEFAULT 'warm'`); err != nil {
 			return fmt.Errorf("migrate paste theme column: %w", err)
 		}
 	}
