@@ -187,6 +187,10 @@
     var characters = document.getElementById('stats-characters');
     var words      = document.getElementById('stats-words');
     var lines      = document.getElementById('stats-lines');
+    var maxBtn     = document.getElementById('notepad-max-btn');
+    var maxLabel   = document.getElementById('notepad-max-label');
+    var maxIcon    = document.getElementById('notepad-max-icon');
+    var restoreIcon = document.getElementById('notepad-restore-icon');
 
     function updateStats() {
       var value = textarea.value;
@@ -194,6 +198,34 @@
       words.textContent = value.trim() === '' ? '0' : value.trim().split(/\s+/).length.toLocaleString();
       lines.textContent = value === '' ? '0' : value.split(/\n/).length.toLocaleString();
     }
+
+    function setMaximized(isMax) {
+      document.documentElement.classList.toggle('notepad-max', isMax);
+      maxLabel.textContent = isMax ? 'Restore' : 'Maximize';
+      maxIcon.classList.toggle('hidden', isMax);
+      restoreIcon.classList.toggle('hidden', !isMax);
+    }
+
+    // Sync state from URL hash on load and on back/forward navigation.
+    function syncFromHash() {
+      setMaximized(location.hash === '#max');
+    }
+
+    syncFromHash();
+    window.addEventListener('hashchange', syncFromHash);
+
+    maxBtn.addEventListener('click', function () {
+      var isMax = document.documentElement.classList.contains('notepad-max');
+      if (isMax) {
+        // Remove the #max hash; pushState adds a history entry so browser
+        // Back returns the user to the maximized view.
+        history.pushState('', '', location.pathname);
+        setMaximized(false);
+      } else {
+        location.hash = '#max';
+        // hashchange fires and calls syncFromHash automatically.
+      }
+    });
 
     textarea.addEventListener('input', updateStats);
     textarea.addEventListener('paste', function (event) {
