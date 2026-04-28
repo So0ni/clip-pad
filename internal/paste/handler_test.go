@@ -35,7 +35,7 @@ func TestBurnPageDoesNotShowContentAndRevealDeletes(t *testing.T) {
 	router.Use(resolver.Middleware)
 	handler.Routes(router)
 
-	created, err := service.Create(context.Background(), "secret text", ExpireBurn, "127.0.0.1")
+	created, err := service.Create(context.Background(), "secret text", ExpireBurn, ThemeWarm, "127.0.0.1")
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
