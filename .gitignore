@@ -1,3 +1,4 @@
 /data/*.db
 /data/*.db-*
 /server
+node_modules/
