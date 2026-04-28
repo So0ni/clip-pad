@@ -50,23 +50,23 @@ func TestCalculateExpiry(t *testing.T) {
 func TestCreatePasteValidation(t *testing.T) {
 	service := newTestService(t, Config{MaxPasteSize: 32, MaxTotalContentBytes: 128, IPHashSecret: "secret", RateLimit: ratelimit.Config{PerIPPerMinute: 10, PerIPPerDay: 100, GlobalPerDay: 1000}})
 
-	if _, err := service.Create(context.Background(), "", ExpireOneDay, "127.0.0.1"); err != ErrContentRequired {
+	if _, err := service.Create(context.Background(), "", ExpireOneDay, ThemeWarm, "127.0.0.1"); err != ErrContentRequired {
 		t.Fatalf("empty content error = %v, want %v", err, ErrContentRequired)
 	}
-	if _, err := service.Create(context.Background(), " \n\t ", ExpireOneDay, "127.0.0.1"); err != ErrContentRequired {
+	if _, err := service.Create(context.Background(), " \n\t ", ExpireOneDay, ThemeWarm, "127.0.0.1"); err != ErrContentRequired {
 		t.Fatalf("whitespace content error = %v, want %v", err, ErrContentRequired)
 	}
-	if _, err := service.Create(context.Background(), strings.Repeat("a", 33), ExpireOneDay, "127.0.0.1"); err != ErrContentTooLarge {
+	if _, err := service.Create(context.Background(), strings.Repeat("a", 33), ExpireOneDay, ThemeWarm, "127.0.0.1"); err != ErrContentTooLarge {
 		t.Fatalf("content too large error = %v, want %v", err, ErrContentTooLarge)
 	}
-	if _, err := service.Create(context.Background(), "hello", "bad", "127.0.0.1"); err != ErrInvalidExpireMode {
+	if _, err := service.Create(context.Background(), "hello", "bad", ThemeWarm, "127.0.0.1"); err != ErrInvalidExpireMode {
 		t.Fatalf("invalid expire error = %v, want %v", err, ErrInvalidExpireMode)
 	}
 }
 
 func TestCreateAndReadPaste(t *testing.T) {
 	service := newTestService(t, defaultTestConfig())
-	created, err := service.Create(context.Background(), "hello world", ExpireOneDay, "127.0.0.1")
+	created, err := service.Create(context.Background(), "hello world", ExpireOneDay, ThemeWarm, "127.0.0.1")
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -90,7 +90,7 @@ func TestExpiredPasteReturnsNotFoundAndDeletes(t *testing.T) {
 	service := newTestService(t, defaultTestConfig())
 	now := time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
 	service.now = func() time.Time { return now }
-	created, err := service.Create(context.Background(), "expired", ExpireOneDay, "127.0.0.1")
+	created, err := service.Create(context.Background(), "expired", ExpireOneDay, ThemeWarm, "127.0.0.1")
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -118,7 +118,7 @@ func TestMissingPasteReturnsNotFound(t *testing.T) {
 
 func TestBurnAfterReadingRevealDeletesPaste(t *testing.T) {
 	service := newTestService(t, defaultTestConfig())
-	created, err := service.Create(context.Background(), "secret text", ExpireBurn, "127.0.0.1")
+	created, err := service.Create(context.Background(), "secret text", ExpireBurn, ThemeWarm, "127.0.0.1")
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -151,18 +151,18 @@ func TestStorageLimitAndCleanup(t *testing.T) {
 	now := time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
 	service.now = func() time.Time { return now }
 
-	if _, err := service.Create(context.Background(), "12345", ExpireOneDay, "127.0.0.1"); err != nil {
+	if _, err := service.Create(context.Background(), "12345", ExpireOneDay, ThemeWarm, "127.0.0.1"); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if _, err := service.Create(context.Background(), "67890", ExpireOneDay, "127.0.0.2"); err != nil {
+	if _, err := service.Create(context.Background(), "67890", ExpireOneDay, ThemeWarm, "127.0.0.2"); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if _, err := service.Create(context.Background(), "x", ExpireOneDay, "127.0.0.3"); err != ErrStorageLimitReached {
+	if _, err := service.Create(context.Background(), "x", ExpireOneDay, ThemeWarm, "127.0.0.3"); err != ErrStorageLimitReached {
 		t.Fatalf("Create() error = %v, want %v", err, ErrStorageLimitReached)
 	}
 
 	service.now = func() time.Time { return now.Add(25 * time.Hour) }
-	if _, err := service.Create(context.Background(), "x", ExpireOneDay, "127.0.0.4"); err != nil {
+	if _, err := service.Create(context.Background(), "x", ExpireOneDay, ThemeWarm, "127.0.0.4"); err != nil {
 		t.Fatalf("Create() after cleanup error = %v", err)
 	}
 }
