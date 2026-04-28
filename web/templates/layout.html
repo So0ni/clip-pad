@@ -30,10 +30,52 @@
         <a href="/" class="nav-link {{if eq .CurrentPage "paste-bin"}}is-active{{end}}">Paste-bin</a>
         <a href="/notepad" class="nav-link {{if eq .CurrentPage "notepad"}}is-active{{end}}">Simple Notepad</a>
       </nav>
-      <div class="theme-switcher" aria-label="Color theme">
-        <button class="theme-btn" data-theme-btn="warm" title="Warm"></button>
-        <button class="theme-btn" data-theme-btn="blue" title="Light Blue"></button>
-        <button class="theme-btn" data-theme-btn="milk" title="Milky White"></button>
+      <div class="theme-switcher">
+        <button
+          id="theme-picker-button"
+          class="theme-picker-trigger"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          aria-controls="theme-picker-menu"
+        >
+          <span class="theme-picker-trigger-label">Theme</span>
+          <span class="theme-picker-trigger-value">
+            <span class="theme-swatch" data-theme-trigger-swatch aria-hidden="true"></span>
+            <span data-theme-trigger-label>Warm</span>
+          </span>
+          <svg class="theme-picker-trigger-icon" width="12" height="8" viewBox="0 0 12 8" fill="none" aria-hidden="true">
+            <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div
+          id="theme-picker-menu"
+          class="theme-menu hidden"
+          role="listbox"
+          aria-label="Color theme"
+        >
+          <button class="theme-option" type="button" data-theme-option="warm" role="option" aria-selected="false">
+            <span class="theme-swatch" data-theme-swatch="warm" aria-hidden="true"></span>
+            <span class="theme-option-text">
+              <strong>Warm</strong>
+              <span>Soft paper tone</span>
+            </span>
+          </button>
+          <button class="theme-option" type="button" data-theme-option="blue" role="option" aria-selected="false">
+            <span class="theme-swatch" data-theme-swatch="blue" aria-hidden="true"></span>
+            <span class="theme-option-text">
+              <strong>Blue</strong>
+              <span>Calm cool surface</span>
+            </span>
+          </button>
+          <button class="theme-option" type="button" data-theme-option="milk" role="option" aria-selected="false">
+            <span class="theme-swatch" data-theme-swatch="milk" aria-hidden="true"></span>
+            <span class="theme-option-text">
+              <strong>Milk</strong>
+              <span>Clean bright canvas</span>
+            </span>
+          </button>
+        </div>
       </div>
     </header>
     {{template "content" .}}
