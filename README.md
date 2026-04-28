@@ -5,6 +5,10 @@ ClipPad is a lightweight web tool with two focused features:
 - **Paste-bin** for short-lived plain-text sharing with expiring links.
 - **Simple Notepad** for temporary in-browser plain-text notes that disappear on refresh.
 
+## Demo
+
+Try ClipPad at <https://clip.qlsmc.cc/>.
+
 ## Features
 
 - Create plain-text pastes from `/`
