@@ -800,7 +800,8 @@ html.notepad-max .stats {
 .qr-modal-box {
   position: relative;
   z-index: 1;
-  background: #fff;
+  background: var(--card);
+  border: 1.5px solid var(--border);
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
@@ -814,7 +815,7 @@ html.notepad-max .stats {
   margin: 0;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #6f6a60;
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -831,7 +832,7 @@ html.notepad-max .stats {
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #6f6a60;
+  color: var(--muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
@@ -839,7 +840,7 @@ html.notepad-max .stats {
 .qr-modal-close:hover,
 .qr-modal-close:focus-visible {
   background: rgba(47, 47, 47, 0.08);
-  color: #2f2f2f;
+  color: var(--text);
   outline: none;
 }
 
