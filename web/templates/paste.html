@@ -1,0 +1,20 @@
+{{define "content"}}
+<main class="page" data-page="paste">
+  <section class="card">
+    <h1>Paste</h1>
+    <dl class="meta-grid">
+      <div>
+        <dt>Created</dt>
+        <dd>{{formatTimeValue .Paste.CreatedAt}}</dd>
+      </div>
+      <div>
+        <dt>Expiration</dt>
+        <dd>{{if .Paste.ExpiresAt}}{{formatTime .Paste.ExpiresAt}}{{else}}Burn after reading{{end}}</dd>
+      </div>
+    </dl>
+    <div class="paste-view">
+      <pre>{{.Paste.Content}}</pre>
+    </div>
+  </section>
+</main>
+{{end}}
