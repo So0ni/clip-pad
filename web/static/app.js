@@ -8,7 +8,7 @@
     blue: 'Blue',
     milk: 'Milk'
   };
-  var syncThemeTrigger = function () {};
+  var updateThemePickerDisplay = function () {};
 
   function initTheme() {
     var pickerButton = document.getElementById('theme-picker-button');
@@ -17,7 +17,7 @@
     var pickerSwatch = document.querySelector('[data-theme-trigger-swatch]');
     var saved = localStorage.getItem('clip-pad-theme') || 'warm';
 
-    syncThemeTrigger = function (theme) {
+    updateThemePickerDisplay = function (theme) {
       if (pickerLabel) pickerLabel.textContent = THEME_LABELS[theme] || 'Warm';
       if (pickerSwatch) pickerSwatch.setAttribute('data-theme-swatch', theme);
     };
@@ -97,7 +97,7 @@
       option.classList.toggle('is-active', isActive);
       option.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
-    syncThemeTrigger(theme);
+    updateThemePickerDisplay(theme);
   }
 
   function currentTheme() {
