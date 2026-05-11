@@ -269,20 +269,42 @@
   // ---- Notepad ----
 
   function initNotepad() {
-    var textarea   = document.getElementById('notepad-text');
-    var characters = document.getElementById('stats-characters');
-    var words      = document.getElementById('stats-words');
-    var lines      = document.getElementById('stats-lines');
-    var maxBtn     = document.getElementById('notepad-max-btn');
-    var maxLabel   = document.getElementById('notepad-max-label');
-    var maxIcon    = document.getElementById('notepad-max-icon');
+    var textarea    = document.getElementById('notepad-text');
+    var characters  = document.getElementById('stats-characters');
+    var words       = document.getElementById('stats-words');
+    var lines       = document.getElementById('stats-lines');
+    var status      = document.getElementById('notepad-save-status');
+    var listPanel   = document.getElementById('notepad-list-panel');
+    var listEl      = document.getElementById('notepad-list');
+    var listBtn     = document.getElementById('notepad-list-btn');
+    var newBtn      = document.getElementById('notepad-new-btn');
+    var maxBtn      = document.getElementById('notepad-max-btn');
+    var maxLabel    = document.getElementById('notepad-max-label');
+    var maxIcon     = document.getElementById('notepad-max-icon');
     var restoreIcon = document.getElementById('notepad-restore-icon');
+    var db;
+    var activeNote;
+    var saveTimer;
+    var applyingNote = false;
+    var dbName = 'clip-pad-notepad';
+    var dbVersion = 1;
 
     function updateStats() {
       var value = textarea.value;
-      characters.textContent = value.length.toLocaleString();
-      words.textContent = value.trim() === '' ? '0' : value.trim().split(/\s+/).length.toLocaleString();
-      lines.textContent = value === '' ? '0' : value.split(/\n/).length.toLocaleString();
+      var charCount = value.length;
+      var wordCount = value.trim() === '' ? 0 : value.trim().split(/\s+/).length;
+      var lineCount = value === '' ? 0 : value.split(/\n/).length;
+      characters.textContent = formatCount(charCount, 'char');
+      words.textContent = formatCount(wordCount, 'word');
+      lines.textContent = formatCount(lineCount, 'line');
+    }
+
+    function formatCount(value, label) {
+      return value.toLocaleString() + ' ' + label + (value === 1 ? '' : 's');
+    }
+
+    function setStatus(text) {
+      if (status) status.textContent = text;
     }
 
     function setMaximized(isMax) {
@@ -311,7 +333,10 @@
       updateHashState(!document.documentElement.classList.contains('notepad-max'));
     });
 
-    textarea.addEventListener('input', updateStats);
+    textarea.addEventListener('input', function () {
+      updateStats();
+      queueSave();
+    });
     textarea.addEventListener('paste', function (event) {
       event.preventDefault();
       var text  = event.clipboardData.getData('text/plain');
@@ -325,7 +350,277 @@
       textarea.dispatchEvent(new Event('input'));
     });
 
+    if (listBtn && listPanel) {
+      listBtn.addEventListener('click', function () {
+        toggleListPanel(listPanel.classList.contains('hidden'));
+      });
+
+      document.addEventListener('click', function (event) {
+        if (listPanel.classList.contains('hidden')) return;
+        if (event.target.closest('.notepad-list-panel') || event.target.closest('#notepad-list-btn')) return;
+        toggleListPanel(false);
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') toggleListPanel(false);
+      });
+    }
+
+    if (newBtn) {
+      newBtn.addEventListener('click', async function () {
+        if (!db) return;
+        await flushSave();
+        if (activeNote && textarea.value.trim() === '') {
+          textarea.focus();
+          toggleListPanel(false);
+          setStatus('Ready');
+          return;
+        }
+        var note = await createNote('');
+        await openNote(note.id);
+        toggleListPanel(false);
+        textarea.focus();
+      });
+    }
+
     updateStats();
+    bootNotes();
+
+    async function bootNotes() {
+      if (!window.indexedDB) {
+        setStatus('Autosave unavailable');
+        textarea.focus();
+        return;
+      }
+
+      try {
+        db = await openDatabase();
+        var lastID = await getSetting('lastOpenedNoteId');
+        var note = lastID ? await getNote(lastID) : null;
+        if (!note) {
+          var notes = await getAllNotes();
+          note = notes[0] || await createNote('');
+        }
+        await openNote(note.id);
+        textarea.focus();
+      } catch (_) {
+        setStatus('Autosave unavailable');
+        textarea.focus();
+      }
+    }
+
+    function toggleListPanel(show) {
+      if (!listPanel || !listBtn) return;
+      listPanel.classList.toggle('hidden', !show);
+      listBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
+      if (show) renderNotesList();
+    }
+
+    function queueSave() {
+      if (!db || !activeNote || applyingNote) return;
+      clearTimeout(saveTimer);
+      setStatus('Saving...');
+      saveTimer = setTimeout(function () {
+        saveActiveNote();
+      }, 350);
+    }
+
+    async function flushSave() {
+      clearTimeout(saveTimer);
+      await saveActiveNote();
+    }
+
+    async function saveActiveNote() {
+      if (!db || !activeNote || applyingNote) return;
+      var now = new Date().toISOString();
+      activeNote.content = textarea.value;
+      activeNote.title = titleFromContent(activeNote.content);
+      activeNote.updatedAt = now;
+      try {
+        await putNote(activeNote);
+        setStatus('Saved');
+        renderNotesList();
+      } catch (_) {
+        setStatus('Unable to save');
+      }
+    }
+
+    async function openNote(id) {
+      if (!db) return;
+      await flushSave();
+      var note = await getNote(id);
+      if (!note) return;
+      applyingNote = true;
+      activeNote = note;
+      textarea.value = note.content || '';
+      updateStats();
+      applyingNote = false;
+      await setSetting('lastOpenedNoteId', note.id);
+      setStatus('Saved');
+      renderNotesList();
+    }
+
+    async function createNote(content) {
+      var now = new Date().toISOString();
+      var note = {
+        id: createNoteID(),
+        content: content,
+        title: titleFromContent(content),
+        createdAt: now,
+        updatedAt: now
+      };
+      await putNote(note);
+      return note;
+    }
+
+    async function removeNote(id) {
+      if (!db) return;
+      var notes = await getAllNotes();
+      var deletingLastNote = notes.length <= 1;
+      await deleteNote(id);
+      if (activeNote && activeNote.id === id) {
+        activeNote = null;
+        var next = deletingLastNote ? await createNote('') : (await getAllNotes())[0];
+        await openNote(next.id);
+      } else {
+        renderNotesList();
+      }
+    }
+
+    async function renderNotesList() {
+      if (!listEl || !db) return;
+      var notes = await getAllNotes();
+      listEl.replaceChildren();
+
+      notes.forEach(function (note) {
+        var row = document.createElement('div');
+        row.className = 'notepad-list-item' + (activeNote && activeNote.id === note.id ? ' is-active' : '');
+
+        var openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'notepad-list-open';
+
+        var title = document.createElement('strong');
+        title.textContent = note.title || 'Untitled';
+
+        var meta = document.createElement('span');
+        meta.textContent = formatNoteTime(note.updatedAt);
+
+        openBtn.appendChild(title);
+        openBtn.appendChild(meta);
+        openBtn.addEventListener('click', async function () {
+          await openNote(note.id);
+          toggleListPanel(false);
+          textarea.focus();
+        });
+
+        var deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'notepad-list-delete';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', async function () {
+          if (window.confirm('Delete this note from this browser?')) {
+            await removeNote(note.id);
+          }
+        });
+
+        row.appendChild(openBtn);
+        row.appendChild(deleteBtn);
+        listEl.appendChild(row);
+      });
+    }
+
+    function openDatabase() {
+      return new Promise(function (resolve, reject) {
+        var request = indexedDB.open(dbName, dbVersion);
+        request.onupgradeneeded = function () {
+          var database = request.result;
+          if (!database.objectStoreNames.contains('notes')) {
+            var notes = database.createObjectStore('notes', { keyPath: 'id' });
+            notes.createIndex('updatedAt', 'updatedAt');
+          }
+          if (!database.objectStoreNames.contains('settings')) {
+            database.createObjectStore('settings', { keyPath: 'key' });
+          }
+        };
+        request.onsuccess = function () { resolve(request.result); };
+        request.onerror = function () { reject(request.error); };
+      });
+    }
+
+    function txComplete(tx) {
+      return new Promise(function (resolve, reject) {
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error); };
+      });
+    }
+
+    function requestResult(request) {
+      return new Promise(function (resolve, reject) {
+        request.onsuccess = function () { resolve(request.result); };
+        request.onerror = function () { reject(request.error); };
+      });
+    }
+
+    async function getAllNotes() {
+      var tx = db.transaction('notes', 'readonly');
+      var notes = await requestResult(tx.objectStore('notes').getAll());
+      notes.sort(function (a, b) {
+        return String(b.updatedAt).localeCompare(String(a.updatedAt));
+      });
+      return notes;
+    }
+
+    function getNote(id) {
+      var tx = db.transaction('notes', 'readonly');
+      return requestResult(tx.objectStore('notes').get(id));
+    }
+
+    async function putNote(note) {
+      var tx = db.transaction('notes', 'readwrite');
+      tx.objectStore('notes').put(note);
+      await txComplete(tx);
+    }
+
+    async function deleteNote(id) {
+      var tx = db.transaction('notes', 'readwrite');
+      tx.objectStore('notes').delete(id);
+      await txComplete(tx);
+    }
+
+    async function getSetting(key) {
+      var tx = db.transaction('settings', 'readonly');
+      var row = await requestResult(tx.objectStore('settings').get(key));
+      return row ? row.value : null;
+    }
+
+    async function setSetting(key, value) {
+      var tx = db.transaction('settings', 'readwrite');
+      tx.objectStore('settings').put({ key: key, value: value });
+      await txComplete(tx);
+    }
+
+    function createNoteID() {
+      return 'note-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+    }
+
+    function titleFromContent(content) {
+      var firstLine = String(content || '').split(/\n/).map(function (line) {
+        return line.trim();
+      }).filter(Boolean)[0];
+      if (!firstLine) return 'Untitled';
+      return firstLine.length > 52 ? firstLine.slice(0, 49) + '...' : firstLine;
+    }
+
+    function formatNoteTime(value) {
+      var time = new Date(value);
+      if (isNaN(time.getTime())) return 'Saved';
+      var diff = Date.now() - time.getTime();
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+      return time.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
   }
 
   // ---- QR Code ----

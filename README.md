@@ -3,7 +3,7 @@
 ClipPad is a lightweight web tool with two focused features:
 
 - **Paste-bin** for short-lived plain-text sharing with expiring links.
-- **Simple Notepad** for temporary in-browser plain-text notes that disappear on refresh.
+- **Simple Notepad** for private plain-text notes saved in the current browser.
 
 ## Demo
 
@@ -19,7 +19,7 @@ Try ClipPad at <https://clip.qlsmc.cc/>.
 - Per-IP and global rate limits
 - Total storage limit based on paste content bytes
 - Simple English UI with mobile-friendly layout
-- Pure front-end notepad with live characters, words, and lines counters
+- Pure front-end notepad with IndexedDB autosave, multiple notes, last-opened note restore, and lightweight text counters
 - Docker, docker-compose, and GitHub Actions support
 
 ## Unsupported features
@@ -33,7 +33,7 @@ ClipPad does **not** support:
 - Public paste listings
 - Search
 - User accounts
-- Persistent storage for the notepad
+- Cross-device sync for the notepad
 
 ## Local development
 
@@ -99,8 +99,10 @@ Burn-after-reading pastes are not shown on the initial `GET /p/{id}` page. Users
 The notepad at `/notepad` is fully front-end only:
 
 - No back-end save API
-- No `localStorage`, `sessionStorage`, or IndexedDB
-- Refreshing the page clears the content
+- Notes are saved to IndexedDB in the current browser
+- The last opened note is restored automatically
+- Multiple notes can be created and switched locally
+- Clearing browser site data removes saved notes
 - Rich-text paste formatting is stripped to plain text
 
 ## Cloudflare and real IP handling

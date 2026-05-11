@@ -472,40 +472,24 @@ select {
   line-height: 1.4;
 }
 
-/* ---- Stats (notepad) ---- */
+/* ---- Notepad status ---- */
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.stats div {
-  padding: 14px 10px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--border);
-  background: var(--card-dim);
-  text-align: center;
-}
-
-.stats-value {
-  display: block;
-  font-size: 1.7rem;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+.notepad-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
 
-.stats-label {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 4px;
+.notepad-statusbar span + span::before {
+  content: '·';
+  margin-right: 8px;
+  color: var(--border);
 }
 
 /* ---- Warning box (burn) ---- */
@@ -683,6 +667,10 @@ select {
 
 /* ---- Notepad title bar ---- */
 
+.page[data-page="notepad"] .card {
+  position: relative;
+}
+
 .notepad-titlebar {
   display: flex;
   align-items: flex-start;
@@ -702,6 +690,106 @@ select {
 
 .notepad-titlebar .muted {
   margin-bottom: 0;
+}
+
+.notepad-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.notepad-actions .button-icon {
+  width: 34px;
+  padding: 6px;
+}
+
+.notepad-list-panel {
+  position: absolute;
+  top: 86px;
+  right: 32px;
+  z-index: 15;
+  width: min(340px, calc(100% - 64px));
+  max-height: min(420px, calc(100vh - 140px));
+  overflow: auto;
+  padding: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.12);
+}
+
+.notepad-list {
+  display: grid;
+  gap: 4px;
+}
+
+.notepad-list-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.notepad-list-item:hover,
+.notepad-list-item.is-active {
+  background: rgba(47, 47, 47, 0.05);
+}
+
+.notepad-list-open,
+.notepad-list-delete {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.notepad-list-open {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.notepad-list-open strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notepad-list-open span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.notepad-list-delete {
+  margin-right: 4px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.notepad-list-open:focus-visible,
+.notepad-list-delete:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--button-ring);
+}
+
+.notepad-list-delete:hover,
+.notepad-list-delete:focus-visible {
+  background: rgba(47, 47, 47, 0.07);
+  color: var(--error);
 }
 
 /* ---- Notepad maximized ---- */
@@ -750,6 +838,12 @@ html.notepad-max .notepad-titlebar {
   margin-bottom: 10px;
 }
 
+html.notepad-max .notepad-list-panel {
+  top: 58px;
+  right: 20px;
+  width: min(360px, calc(100% - 40px));
+}
+
 html.notepad-max .field {
   flex: 1;
   min-height: 0;
@@ -763,9 +857,9 @@ html.notepad-max #notepad-text {
   resize: none;
 }
 
-html.notepad-max .stats {
+html.notepad-max .notepad-statusbar {
   flex-shrink: 0;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 /* ---- Utilities ---- */
@@ -895,12 +989,17 @@ html.notepad-max .stats {
     grid-template-columns: 1fr;
   }
 
-  .stats {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+  .notepad-titlebar {
+    align-items: flex-start;
   }
 
-  .stats-value {
-    font-size: 1.3rem;
+  .notepad-actions {
+    gap: 6px;
+  }
+
+  .notepad-list-panel {
+    top: 84px;
+    right: 16px;
+    width: calc(100% - 32px);
   }
 }
