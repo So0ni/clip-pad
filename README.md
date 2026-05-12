@@ -20,6 +20,8 @@ Try ClipPad at <https://clip.qlsmc.cc/>.
 - Total storage limit based on paste content bytes
 - Simple English UI with mobile-friendly layout
 - Pure front-end notepad with IndexedDB autosave, multiple notes, last-opened note restore, and lightweight text counters
+- Read-only notepad snapshot sharing with expiring links and one-click save back into local notepad
+- Local IndexedDB share history for active paste and notepad links, storing link metadata only
 - Docker, docker-compose, and GitHub Actions support
 
 ## Unsupported features
@@ -34,6 +36,7 @@ ClipPad does **not** support:
 - Search
 - User accounts
 - Cross-device sync for the notepad
+- Cross-device share history
 
 ## Local development
 
@@ -71,7 +74,7 @@ The included `docker-compose.yml` mounts `./data` to `/data` for persistence.
 | `CLIPPAD_ADDR` | `:8080` | HTTP listen address |
 | `CLIPPAD_DB_PATH` | `/data/clippad.db` | SQLite database path |
 | `CLIPPAD_MAX_PASTE_SIZE` | `1048576` | Maximum bytes per paste |
-| `CLIPPAD_MAX_TOTAL_CONTENT_BYTES` | `1073741824` | Maximum total bytes stored across non-expired pastes |
+| `CLIPPAD_MAX_TOTAL_CONTENT_BYTES` | `1073741824` | Maximum total bytes stored across non-expired pastes and notepad snapshots |
 | `CLIPPAD_RATE_LIMIT_PER_IP_PER_MINUTE` | `10` | Per-IP paste creation limit per minute |
 | `CLIPPAD_RATE_LIMIT_PER_IP_PER_DAY` | `100` | Per-IP paste creation limit per day |
 | `CLIPPAD_RATE_LIMIT_GLOBAL_PER_DAY` | `5000` | Global paste creation limit per day |
@@ -88,7 +91,7 @@ ClipPad stores data in SQLite. Persist `/data` when running in Docker so `clippa
 
 - `1 day`, `7 days`, and `30 days` pastes store an `expires_at` timestamp.
 - Expired pastes are deleted when they are accessed.
-- A background cleanup task also removes expired pastes every hour.
+- A background cleanup task also removes expired pastes and notepad snapshots every hour.
 
 ## Burn after reading
 
@@ -104,6 +107,28 @@ The notepad at `/notepad` is fully front-end only:
 - Multiple notes can be created and switched locally
 - Clearing browser site data removes saved notes
 - Rich-text paste formatting is stripped to plain text
+
+## Notepad snapshot sharing
+
+Notepad shares are read-only snapshots created from the current local note:
+
+- Share links use `/n/{id}`
+- Expiration modes: `1 day`, `7 days`, `30 days`
+- Future local edits do not update an existing share link
+- Visitors can save the snapshot into their own browser-local notepad
+- Saved local copies are independent from the share link
+- Burn-after-reading is not supported for notepad snapshots
+
+## Local share history
+
+ClipPad keeps a small local share history in IndexedDB for the current browser:
+
+- Paste and notepad share links are recorded after creation
+- Only metadata is stored locally: type, URL, title, created time, and expiration time
+- Paste or note content is not stored in share history
+- Expired entries are pruned automatically
+- Burn-after-reading paste links are not added because they have no predictable expiration time
+- Clearing browser site data removes the local history
 
 ## Cloudflare and real IP handling
 

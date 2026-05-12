@@ -1,11 +1,10 @@
-package paste
+package noteshare
 
 import (
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
-	"time"
 
 	appmiddleware "github.com/So0ni/clip-pad/internal/middleware"
 	"github.com/So0ni/clip-pad/internal/ratelimit"
@@ -24,75 +23,55 @@ type Handler struct {
 
 type pageData struct {
 	CurrentPage string
-	Paste       *Paste
-	PasteID     string
-	RevealURL   string
+	Share       *NoteShare
 	Error       string
-	Now         time.Time
 }
 
 type createRequest struct {
+	Title   string `json:"title"`
 	Content string `json:"content"`
 	Expire  string `json:"expire"`
-	Theme   string `json:"theme"`
 }
 
 type errorResponse struct {
 	Error string `json:"error"`
 }
 
-type revealResponse struct {
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func NewHandler(service *Service, renderer Renderer, maxPasteSize int) *Handler {
-	maxRequestBytes := int64(maxPasteSize)*4 + 1024
-	if maxRequestBytes < int64(maxPasteSize) {
-		maxRequestBytes = int64(maxPasteSize)
+func NewHandler(service *Service, renderer Renderer, maxContentSize int) *Handler {
+	maxRequestBytes := int64(maxContentSize)*4 + 2048
+	if maxRequestBytes < int64(maxContentSize) {
+		maxRequestBytes = int64(maxContentSize)
 	}
 	return &Handler{service: service, renderer: renderer, maxRequestBytes: maxRequestBytes}
 }
 
 func (h *Handler) Routes(r chi.Router) {
-	r.Get("/p/{id}", h.ShowPaste)
-	r.Post("/api/pastes", h.CreatePaste)
-	r.Post("/api/pastes/{id}/reveal", h.RevealPaste)
+	r.Get("/n/{id}", h.ShowNoteShare)
+	r.Post("/api/notepad/shares", h.CreateNoteShare)
 }
 
-func (h *Handler) ShowPaste(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) ShowNoteShare(w http.ResponseWriter, req *http.Request) {
 	id := chi.URLParam(req, "id")
-	paste, err := h.service.Get(req.Context(), id)
+	share, err := h.service.Get(req.Context(), id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			h.renderPageError(w, http.StatusNotFound, "notfound.html", pageData{CurrentPage: "paste"})
+			h.renderPageError(w, http.StatusNotFound, "notfound.html", pageData{CurrentPage: "note-share"})
 			return
 		}
-		log.Printf("show paste error: %v", err)
-		h.renderPageError(w, http.StatusInternalServerError, "notfound.html", pageData{CurrentPage: "paste"})
+		log.Printf("show note share error: %v", err)
+		h.renderPageError(w, http.StatusInternalServerError, "notfound.html", pageData{CurrentPage: "note-share"})
 		return
 	}
 
-	if paste.BurnAfterRead {
-		if err := h.renderer.Render(w, http.StatusOK, "burn.html", pageData{
-			CurrentPage: "paste",
-			PasteID:     paste.ID,
-			RevealURL:   "/api/pastes/" + paste.ID + "/reveal",
-		}); err != nil {
-			log.Printf("render burn page error: %v", err)
-		}
-		return
-	}
-
-	if err := h.renderer.Render(w, http.StatusOK, "paste.html", pageData{
-		CurrentPage: "paste",
-		Paste:       paste,
+	if err := h.renderer.Render(w, http.StatusOK, "note_share.html", pageData{
+		CurrentPage: "note-share",
+		Share:       share,
 	}); err != nil {
-		log.Printf("render paste page error: %v", err)
+		log.Printf("render note share page error: %v", err)
 	}
 }
 
-func (h *Handler) CreatePaste(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) CreateNoteShare(w http.ResponseWriter, req *http.Request) {
 	req.Body = http.MaxBytesReader(w, req.Body, h.maxRequestBytes)
 	defer req.Body.Close()
 
@@ -108,11 +87,13 @@ func (h *Handler) CreatePaste(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	created, err := h.service.Create(req.Context(), body.Content, body.Expire, body.Theme, appmiddleware.GetRealIP(req))
+	created, err := h.service.Create(req.Context(), body.Title, body.Content, body.Expire, appmiddleware.GetRealIP(req))
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrContentRequired):
 			h.writeJSONError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, ErrTitleTooLarge):
+			h.writeJSONError(w, http.StatusBadRequest, "title exceeds the maximum size")
 		case errors.Is(err, ErrContentTooLarge):
 			h.writeJSONError(w, http.StatusBadRequest, "content exceeds the maximum size")
 		case errors.Is(err, ErrInvalidExpireMode):
@@ -122,32 +103,13 @@ func (h *Handler) CreatePaste(w http.ResponseWriter, req *http.Request) {
 		case errors.Is(err, ErrStorageLimitReached):
 			h.writeJSONError(w, http.StatusInsufficientStorage, ErrStorageLimitReached.Error())
 		default:
-			log.Printf("create paste error: %v", err)
+			log.Printf("create note share error: %v", err)
 			h.writeJSONError(w, http.StatusInternalServerError, "internal server error")
 		}
 		return
 	}
 
-	h.writeJSON(w, http.StatusCreated, CreateResponse{ID: created.ID, URL: "/p/" + created.ID, ExpiresAt: created.ExpiresAt})
-}
-
-func (h *Handler) RevealPaste(w http.ResponseWriter, req *http.Request) {
-	id := chi.URLParam(req, "id")
-	paste, err := h.service.Reveal(req.Context(), id)
-	if err != nil {
-		switch {
-		case errors.Is(err, ErrNotFound):
-			h.writeJSONError(w, http.StatusNotFound, "notfound")
-		case errors.Is(err, ErrNotBurnPaste):
-			h.writeJSONError(w, http.StatusBadRequest, "paste is not burn-after-reading")
-		default:
-			log.Printf("reveal paste error: %v", err)
-			h.writeJSONError(w, http.StatusInternalServerError, "internal server error")
-		}
-		return
-	}
-
-	h.writeJSON(w, http.StatusOK, revealResponse{Content: paste.Content, CreatedAt: paste.CreatedAt})
+	h.writeJSON(w, http.StatusCreated, CreateResponse{ID: created.ID, URL: "/n/" + created.ID, ExpiresAt: created.ExpiresAt})
 }
 
 func (h *Handler) renderPageError(w http.ResponseWriter, status int, name string, data pageData) {

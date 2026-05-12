@@ -14,6 +14,7 @@ import (
 	"github.com/So0ni/clip-pad/internal/config"
 	clipdb "github.com/So0ni/clip-pad/internal/db"
 	appmiddleware "github.com/So0ni/clip-pad/internal/middleware"
+	"github.com/So0ni/clip-pad/internal/noteshare"
 	"github.com/So0ni/clip-pad/internal/paste"
 	"github.com/So0ni/clip-pad/internal/ratelimit"
 	"github.com/go-chi/chi/v5"
@@ -55,9 +56,22 @@ func main() {
 			GlobalPerDay:   cfg.RateLimitGlobalPerDay,
 		},
 	})
+	noteShareService := noteshare.NewService(database, noteshare.Config{
+		MaxContentSize:       cfg.MaxPasteSize,
+		MaxTotalContentBytes: cfg.MaxTotalContentBytes,
+		IPHashSecret:         cfg.IPHashSecret,
+		RateLimit: ratelimit.Config{
+			PerIPPerMinute: cfg.RateLimitPerIPPerMinute,
+			PerIPPerDay:    cfg.RateLimitPerIPPerDay,
+			GlobalPerDay:   cfg.RateLimitGlobalPerDay,
+		},
+	})
 
 	if err := service.CleanupExpiredPastes(ctx); err != nil {
 		log.Fatalf("initial paste cleanup: %v", err)
+	}
+	if err := noteShareService.CleanupExpiredNoteShares(ctx); err != nil {
+		log.Fatalf("initial note share cleanup: %v", err)
 	}
 	if err := service.CleanupExpiredRateLimits(ctx); err != nil {
 		log.Fatalf("initial rate-limit cleanup: %v", err)
@@ -65,7 +79,7 @@ func main() {
 
 	cleanupCtx, cleanupStop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cleanupStop()
-	go startCleanupLoop(cleanupCtx, service)
+	go startCleanupLoop(cleanupCtx, service, noteShareService)
 
 	router := chi.NewRouter()
 	router.Use(appmiddleware.RequestLogger)
@@ -73,6 +87,8 @@ func main() {
 
 	pasteHandler := paste.NewHandler(service, renderer, cfg.MaxPasteSize)
 	pasteHandler.Routes(router)
+	noteShareHandler := noteshare.NewHandler(noteShareService, renderer, cfg.MaxPasteSize)
+	noteShareHandler.Routes(router)
 
 	fileServer := http.FileServer(http.Dir(filepath.Join("web", "static")))
 	staticHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +135,7 @@ func main() {
 	}
 }
 
-func startCleanupLoop(ctx context.Context, service *paste.Service) {
+func startCleanupLoop(ctx context.Context, service *paste.Service, noteShareService *noteshare.Service) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
@@ -130,6 +146,9 @@ func startCleanupLoop(ctx context.Context, service *paste.Service) {
 		case <-ticker.C:
 			if err := service.CleanupExpiredPastes(context.Background()); err != nil {
 				log.Printf("cleanup expired pastes error: %v", err)
+			}
+			if err := noteShareService.CleanupExpiredNoteShares(context.Background()); err != nil {
+				log.Printf("cleanup expired note shares error: %v", err)
 			}
 			if err := service.CleanupExpiredRateLimits(context.Background()); err != nil {
 				log.Printf("cleanup expired rate limits error: %v", err)

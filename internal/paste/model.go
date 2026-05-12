@@ -28,6 +28,7 @@ type Paste struct {
 }
 
 type CreateResponse struct {
-	ID  string `json:"id"`
-	URL string `json:"url"`
+	ID        string     `json:"id"`
+	URL       string     `json:"url"`
+	ExpiresAt *time.Time `json:"expires_at"`
 }

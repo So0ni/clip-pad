@@ -79,6 +79,29 @@
           </button>
         </div>
       </div>
+      <div class="share-history">
+        <button
+          id="share-history-button"
+          class="button button-secondary button-sm button-icon"
+          type="button"
+          title="Share history"
+          aria-label="Share history"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          aria-controls="share-history-panel"
+        >
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+            <path d="M7.5 2a5.5 5.5 0 1 1-4.2 1.94M2.5 2.1v2.9h2.9M7.5 4.6v3.1l2.1 1.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div id="share-history-panel" class="share-history-panel hidden" aria-label="Share history">
+          <div class="share-history-head">
+            <strong>Share history</strong>
+            <span>Local only</span>
+          </div>
+          <div id="share-history-list" class="share-history-list"></div>
+        </div>
+      </div>
     </header>
     {{template "content" .}}
   </div>

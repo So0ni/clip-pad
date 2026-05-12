@@ -55,6 +55,17 @@ theme TEXT NOT NULL DEFAULT 'warm'
 );`,
 		`CREATE INDEX IF NOT EXISTS idx_pastes_expires_at ON pastes(expires_at);`,
 		`CREATE INDEX IF NOT EXISTS idx_pastes_created_at ON pastes(created_at);`,
+		`CREATE TABLE IF NOT EXISTS note_shares (
+id TEXT PRIMARY KEY,
+title TEXT NOT NULL,
+content TEXT NOT NULL,
+content_bytes INTEGER NOT NULL,
+expire_mode TEXT NOT NULL,
+expires_at DATETIME NOT NULL,
+created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);`,
+		`CREATE INDEX IF NOT EXISTS idx_note_shares_expires_at ON note_shares(expires_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_note_shares_created_at ON note_shares(created_at);`,
 		`CREATE TABLE IF NOT EXISTS rate_limits (
 bucket TEXT NOT NULL,
 key TEXT NOT NULL,

@@ -423,6 +423,14 @@ select {
   letter-spacing: 0.05em;
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .paste-code {
   overflow-x: auto;
   padding: 16px 18px;
@@ -665,6 +673,102 @@ select {
 .theme-swatch[data-theme-swatch="blue"] { background: #edf3f8; }
 .theme-swatch[data-theme-swatch="milk"] { background: #fefefe; }
 
+/* ---- Share history ---- */
+
+.share-history {
+  position: relative;
+}
+
+.share-history-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(420px, calc(100vh - 120px));
+  overflow: auto;
+  padding: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.12);
+}
+
+.share-history-head,
+.share-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.share-history-head strong,
+.share-panel-head strong {
+  font-size: 0.88rem;
+}
+
+.share-history-head span,
+.share-panel-head span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.share-history-list {
+  display: grid;
+  gap: 4px;
+}
+
+.share-history-empty {
+  margin: 0;
+  padding: 12px 8px 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.share-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 4px 7px 8px;
+  border-radius: 10px;
+}
+
+.share-history-item:hover {
+  background: rgba(47, 47, 47, 0.05);
+}
+
+.share-history-main {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.share-history-title {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-history-meta {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.share-history-action {
+  width: 48px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+  font-size: 0.72rem;
+}
+
 /* ---- Notepad title bar ---- */
 
 .page[data-page="notepad"] .card {
@@ -718,6 +822,36 @@ select {
   border-radius: 16px;
   background: var(--card);
   box-shadow: 0 18px 35px rgba(0, 0, 0, 0.12);
+}
+
+.notepad-share-panel {
+  position: absolute;
+  top: 86px;
+  right: 32px;
+  z-index: 16;
+  width: min(360px, calc(100% - 64px));
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.12);
+}
+
+.notepad-share-panel select {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.notepad-share-panel .button:not(.button-secondary) {
+  width: 100%;
+  justify-content: center;
+}
+
+.share-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .notepad-list {
@@ -842,6 +976,12 @@ html.notepad-max .notepad-list-panel {
   top: 58px;
   right: 20px;
   width: min(360px, calc(100% - 40px));
+}
+
+html.notepad-max .notepad-share-panel {
+  top: 58px;
+  right: 20px;
+  width: min(380px, calc(100% - 40px));
 }
 
 html.notepad-max .field {

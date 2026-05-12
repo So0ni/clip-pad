@@ -25,7 +25,7 @@ func newTemplateRenderer(basePath string) (*templateRenderer, error) {
 		},
 	}
 
-	pages := []string{"index.html", "paste.html", "burn.html", "notepad.html", "notfound.html"}
+	pages := []string{"index.html", "paste.html", "burn.html", "notepad.html", "note_share.html", "notfound.html"}
 	renderer := &templateRenderer{templates: make(map[string]*template.Template, len(pages))}
 	layout := filepath.Join(basePath, "layout.html")
 	for _, page := range pages {

@@ -2,3 +2,4 @@
 /data/*.db-*
 /server
 node_modules/
+.playwright-mcp/

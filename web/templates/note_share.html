@@ -1,0 +1,30 @@
+{{define "content"}}
+<main class="page" data-page="note-share">
+  <section class="card">
+    <h1>{{.Share.Title}}</h1>
+    <dl class="meta-grid">
+      <div>
+        <dt>Created</dt>
+        <dd><time data-utc="{{formatTimeValue .Share.CreatedAt}}">{{formatTimeValue .Share.CreatedAt}}</time></dd>
+      </div>
+      <div>
+        <dt>Expires</dt>
+        <dd><time data-utc="{{formatTimeValue .Share.ExpiresAt}}">{{formatTimeValue .Share.ExpiresAt}}</time></dd>
+      </div>
+    </dl>
+    <div class="paste-view">
+      <div class="paste-toolbar">
+        <span class="paste-toolbar-label">Shared note</span>
+        <div class="toolbar-actions">
+          <button type="button" class="button button-secondary button-sm" id="save-note-share-btn">Save to my notepad</button>
+          <button type="button" class="button button-secondary button-sm" id="copy-content-btn">Copy</button>
+        </div>
+      </div>
+      <div class="paste-code">
+        <pre id="paste-content-text" data-note-title="{{.Share.Title}}">{{.Share.Content}}</pre>
+      </div>
+    </div>
+    <p id="note-share-feedback" class="feedback" aria-live="polite"></p>
+  </section>
+</main>
+{{end}}

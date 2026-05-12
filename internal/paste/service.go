@@ -74,6 +74,9 @@ func (s *Service) Create(ctx context.Context, content, expireMode, theme, realIP
 	if err := s.cleanupExpiredPastesTx(ctx, tx, now); err != nil {
 		return nil, err
 	}
+	if err := s.cleanupExpiredNoteSharesTx(ctx, tx, now); err != nil {
+		return nil, err
+	}
 	if err := s.limiter.CleanupExpired(ctx, tx, now); err != nil {
 		return nil, fmt.Errorf("cleanup expired rate limits: %w", err)
 	}
@@ -253,10 +256,22 @@ func (s *Service) cleanupExpiredPastesTx(ctx context.Context, db execQueryer, no
 	return nil
 }
 
+func (s *Service) cleanupExpiredNoteSharesTx(ctx context.Context, db execQueryer, now time.Time) error {
+	_, err := db.ExecContext(ctx, `DELETE FROM note_shares WHERE expires_at < ?`, now.UTC())
+	if err != nil {
+		return fmt.Errorf("cleanup expired note shares: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) totalContentBytesTx(ctx context.Context, db queryer) (int64, error) {
 	var total sql.NullInt64
-	if err := db.QueryRowContext(ctx, `SELECT COALESCE(SUM(content_bytes), 0) FROM pastes`).Scan(&total); err != nil {
-		return 0, fmt.Errorf("sum paste bytes: %w", err)
+	if err := db.QueryRowContext(ctx, `
+SELECT
+  COALESCE((SELECT SUM(content_bytes) FROM pastes), 0) +
+  COALESCE((SELECT SUM(content_bytes) FROM note_shares), 0)
+`).Scan(&total); err != nil {
+		return 0, fmt.Errorf("sum stored content bytes: %w", err)
 	}
 	if !total.Valid {
 		return 0, nil

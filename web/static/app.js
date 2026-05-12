@@ -121,6 +121,207 @@
 
   initLocalTimes();
 
+  // ---- Local IndexedDB ----
+
+  var ClipPadLocal = (function () {
+    var dbPromise;
+    var dbName = 'clip-pad-notepad';
+    var dbVersion = 2;
+
+    function openDatabase() {
+      if (dbPromise) return dbPromise;
+      dbPromise = new Promise(function (resolve, reject) {
+        if (!window.indexedDB) {
+          reject(new Error('IndexedDB unavailable'));
+          return;
+        }
+        var request = indexedDB.open(dbName, dbVersion);
+        request.onupgradeneeded = function () {
+          var database = request.result;
+          if (!database.objectStoreNames.contains('notes')) {
+            var notes = database.createObjectStore('notes', { keyPath: 'id' });
+            notes.createIndex('updatedAt', 'updatedAt');
+          }
+          if (!database.objectStoreNames.contains('settings')) {
+            database.createObjectStore('settings', { keyPath: 'key' });
+          }
+          if (!database.objectStoreNames.contains('shareHistory')) {
+            var history = database.createObjectStore('shareHistory', { keyPath: 'id' });
+            history.createIndex('expiresAt', 'expiresAt');
+            history.createIndex('createdAt', 'createdAt');
+          }
+        };
+        request.onsuccess = function () {
+          var database = request.result;
+          database.onversionchange = function () {
+            database.close();
+            dbPromise = null;
+          };
+          resolve(database);
+        };
+        request.onerror = function () {
+          dbPromise = null;
+          reject(request.error);
+        };
+      });
+      return dbPromise;
+    }
+
+    function txComplete(tx) {
+      return new Promise(function (resolve, reject) {
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error); };
+      });
+    }
+
+    function requestResult(request) {
+      return new Promise(function (resolve, reject) {
+        request.onsuccess = function () { resolve(request.result); };
+        request.onerror = function () { reject(request.error); };
+      });
+    }
+
+    function createNoteID() {
+      return 'note-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+    }
+
+    function createHistoryID() {
+      return 'share-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+    }
+
+    function titleFromContent(content) {
+      var firstLine = String(content || '').split(/\n/).map(function (line) {
+        return line.trim();
+      }).filter(Boolean)[0];
+      if (!firstLine) return 'Untitled';
+      return firstLine.length > 52 ? firstLine.slice(0, 49) + '...' : firstLine;
+    }
+
+    async function getAllNotes(db) {
+      var tx = db.transaction('notes', 'readonly');
+      var notes = await requestResult(tx.objectStore('notes').getAll());
+      notes.sort(function (a, b) {
+        return String(b.updatedAt).localeCompare(String(a.updatedAt));
+      });
+      return notes;
+    }
+
+    function getNote(db, id) {
+      var tx = db.transaction('notes', 'readonly');
+      return requestResult(tx.objectStore('notes').get(id));
+    }
+
+    async function putNote(db, note) {
+      var tx = db.transaction('notes', 'readwrite');
+      tx.objectStore('notes').put(note);
+      await txComplete(tx);
+    }
+
+    async function deleteNote(db, id) {
+      var tx = db.transaction('notes', 'readwrite');
+      tx.objectStore('notes').delete(id);
+      await txComplete(tx);
+    }
+
+    async function getSetting(db, key) {
+      var tx = db.transaction('settings', 'readonly');
+      var row = await requestResult(tx.objectStore('settings').get(key));
+      return row ? row.value : null;
+    }
+
+    async function setSetting(db, key, value) {
+      var tx = db.transaction('settings', 'readwrite');
+      tx.objectStore('settings').put({ key: key, value: value });
+      await txComplete(tx);
+    }
+
+    async function createLocalNote(content, title) {
+      var db = await openDatabase();
+      var now = new Date().toISOString();
+      var note = {
+        id: createNoteID(),
+        content: content,
+        title: title && String(title).trim() ? String(title).trim() : titleFromContent(content),
+        createdAt: now,
+        updatedAt: now
+      };
+      await putNote(db, note);
+      await setSetting(db, 'lastOpenedNoteId', note.id);
+      return note;
+    }
+
+    async function addShareHistory(entry) {
+      if (!entry || !entry.url || !entry.expiresAt) return;
+      var expiresAt = new Date(entry.expiresAt);
+      if (isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) return;
+      var db = await openDatabase();
+      await pruneExpiredShareHistory(db);
+      var title = String(entry.title || '').trim();
+      if (title.length > 80) title = title.slice(0, 77) + '...';
+      var row = {
+        id: createHistoryID(),
+        type: entry.type === 'note' ? 'note' : 'paste',
+        url: entry.url,
+        title: title,
+        expiresAt: expiresAt.toISOString(),
+        createdAt: new Date().toISOString()
+      };
+      var tx = db.transaction('shareHistory', 'readwrite');
+      tx.objectStore('shareHistory').put(row);
+      await txComplete(tx);
+    }
+
+    async function listShareHistory() {
+      var db = await openDatabase();
+      await pruneExpiredShareHistory(db);
+      var tx = db.transaction('shareHistory', 'readonly');
+      var rows = await requestResult(tx.objectStore('shareHistory').getAll());
+      rows.sort(function (a, b) {
+        return String(b.createdAt).localeCompare(String(a.createdAt));
+      });
+      return rows;
+    }
+
+    async function pruneExpiredShareHistory(db) {
+      db = db || await openDatabase();
+      var readTx = db.transaction('shareHistory', 'readonly');
+      var rows = await requestResult(readTx.objectStore('shareHistory').getAll());
+      var now = Date.now();
+      var expiredIDs = rows.filter(function (row) {
+        var expiresAt = new Date(row.expiresAt);
+        return isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now;
+      }).map(function (row) {
+        return row.id;
+      });
+      if (!expiredIDs.length) return;
+      var tx = db.transaction('shareHistory', 'readwrite');
+      var store = tx.objectStore('shareHistory');
+      expiredIDs.forEach(function (id) {
+        store.delete(id);
+      });
+      await txComplete(tx);
+    }
+
+    return {
+      openDatabase: openDatabase,
+      getAllNotes: getAllNotes,
+      getNote: getNote,
+      putNote: putNote,
+      deleteNote: deleteNote,
+      getSetting: getSetting,
+      setSetting: setSetting,
+      createLocalNote: createLocalNote,
+      titleFromContent: titleFromContent,
+      addShareHistory: addShareHistory,
+      listShareHistory: listShareHistory,
+      pruneExpiredShareHistory: pruneExpiredShareHistory
+    };
+  })();
+
+  window.ClipPadLocal = ClipPadLocal;
+  initShareHistory();
+
   // ---- Page init ----
 
   var page = document.querySelector('[data-page]');
@@ -131,6 +332,7 @@
   if (p === 'burn')    initBurnReveal(page.dataset.revealUrl);
   if (p === 'notepad') initNotepad();
   if (p === 'paste')   initPasteView(page.dataset.pasteTheme);
+  if (p === 'note-share') initNoteShareView();
 
   // ---- Paste form ----
 
@@ -172,10 +374,16 @@
           setFeedback(data.error || 'Unable to create paste.', 'is-error');
           return;
         }
-        urlInput.value = window.location.origin + data.url;
+        urlInput.value = absoluteURL(data.url);
         result.classList.remove('hidden');
         setFeedback('Paste created.', 'is-success');
         urlInput.select();
+        ClipPadLocal.addShareHistory({
+          type: 'paste',
+          url: urlInput.value,
+          expiresAt: data.expires_at,
+          title: ClipPadLocal.titleFromContent(payload.content)
+        }).then(renderShareHistoryIfOpen).catch(function () {});
       } catch (_) {
         setFeedback('Unable to create paste right now.', 'is-error');
       }
@@ -278,6 +486,14 @@
     var listEl      = document.getElementById('notepad-list');
     var listBtn     = document.getElementById('notepad-list-btn');
     var newBtn      = document.getElementById('notepad-new-btn');
+    var shareBtn    = document.getElementById('notepad-share-btn');
+    var sharePanel  = document.getElementById('notepad-share-panel');
+    var shareExpire = document.getElementById('notepad-share-expire');
+    var createShareBtn = document.getElementById('notepad-create-share-btn');
+    var shareFeedback = document.getElementById('notepad-share-feedback');
+    var shareResult = document.getElementById('notepad-share-result');
+    var shareURLInput = document.getElementById('notepad-share-url');
+    var copyShareURLBtn = document.getElementById('copy-note-share-url-btn');
     var maxBtn      = document.getElementById('notepad-max-btn');
     var maxLabel    = document.getElementById('notepad-max-label');
     var maxIcon     = document.getElementById('notepad-max-icon');
@@ -286,8 +502,6 @@
     var activeNote;
     var saveTimer;
     var applyingNote = false;
-    var dbName = 'clip-pad-notepad';
-    var dbVersion = 1;
 
     function updateStats() {
       var value = textarea.value;
@@ -353,6 +567,7 @@
     if (listBtn && listPanel) {
       listBtn.addEventListener('click', function () {
         toggleListPanel(listPanel.classList.contains('hidden'));
+        toggleSharePanel(false);
       });
 
       document.addEventListener('click', function (event) {
@@ -380,6 +595,33 @@
         await openNote(note.id);
         toggleListPanel(false);
         textarea.focus();
+      });
+    }
+
+    if (shareBtn && sharePanel) {
+      shareBtn.addEventListener('click', function () {
+        toggleSharePanel(sharePanel.classList.contains('hidden'));
+        toggleListPanel(false);
+      });
+
+      document.addEventListener('click', function (event) {
+        if (sharePanel.classList.contains('hidden')) return;
+        if (event.target.closest('.notepad-share-panel') || event.target.closest('#notepad-share-btn')) return;
+        toggleSharePanel(false);
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') toggleSharePanel(false);
+      });
+    }
+
+    if (createShareBtn) {
+      createShareBtn.addEventListener('click', createNoteShare);
+    }
+
+    if (copyShareURLBtn && shareURLInput) {
+      copyShareURLBtn.addEventListener('click', function () {
+        copyText(shareURLInput.value, copyShareURLBtn, 'Copied!');
       });
     }
 
@@ -414,6 +656,65 @@
       listPanel.classList.toggle('hidden', !show);
       listBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
       if (show) renderNotesList();
+    }
+
+    function toggleSharePanel(show) {
+      if (!sharePanel || !shareBtn) return;
+      sharePanel.classList.toggle('hidden', !show);
+      shareBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
+      if (show) {
+        setShareFeedback('', '');
+        if (shareResult) shareResult.classList.add('hidden');
+      }
+    }
+
+    async function createNoteShare() {
+      if (!db || !activeNote) return;
+      await flushSave();
+      setShareFeedback('Creating share link...', '');
+      if (shareResult) shareResult.classList.add('hidden');
+      createShareBtn.disabled = true;
+
+      var payload = {
+        title: activeNote.title || titleFromContent(textarea.value),
+        content: textarea.value,
+        expire: shareExpire ? shareExpire.value : '7d'
+      };
+
+      try {
+        var response = await fetch('/api/notepad/shares', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        var data = await response.json();
+        if (!response.ok) {
+          setShareFeedback(data.error || 'Unable to create share link.', 'is-error');
+          return;
+        }
+        var url = absoluteURL(data.url);
+        if (shareURLInput) shareURLInput.value = url;
+        if (shareResult) shareResult.classList.remove('hidden');
+        setShareFeedback('Share link created.', 'is-success');
+        if (shareURLInput) shareURLInput.select();
+        await ClipPadLocal.addShareHistory({
+          type: 'note',
+          url: url,
+          expiresAt: data.expires_at,
+          title: payload.title
+        });
+        renderShareHistoryIfOpen();
+      } catch (_) {
+        setShareFeedback('Unable to create share link right now.', 'is-error');
+      } finally {
+        createShareBtn.disabled = false;
+      }
+    }
+
+    function setShareFeedback(msg, cls) {
+      if (!shareFeedback) return;
+      shareFeedback.textContent = msg;
+      shareFeedback.className = 'feedback' + (cls ? ' ' + cls : '');
     }
 
     function queueSave() {
@@ -461,16 +762,7 @@
     }
 
     async function createNote(content) {
-      var now = new Date().toISOString();
-      var note = {
-        id: createNoteID(),
-        content: content,
-        title: titleFromContent(content),
-        createdAt: now,
-        updatedAt: now
-      };
-      await putNote(note);
-      return note;
+      return ClipPadLocal.createLocalNote(content, titleFromContent(content));
     }
 
     async function removeNote(id) {
@@ -531,86 +823,35 @@
     }
 
     function openDatabase() {
-      return new Promise(function (resolve, reject) {
-        var request = indexedDB.open(dbName, dbVersion);
-        request.onupgradeneeded = function () {
-          var database = request.result;
-          if (!database.objectStoreNames.contains('notes')) {
-            var notes = database.createObjectStore('notes', { keyPath: 'id' });
-            notes.createIndex('updatedAt', 'updatedAt');
-          }
-          if (!database.objectStoreNames.contains('settings')) {
-            database.createObjectStore('settings', { keyPath: 'key' });
-          }
-        };
-        request.onsuccess = function () { resolve(request.result); };
-        request.onerror = function () { reject(request.error); };
-      });
-    }
-
-    function txComplete(tx) {
-      return new Promise(function (resolve, reject) {
-        tx.oncomplete = function () { resolve(); };
-        tx.onerror = function () { reject(tx.error); };
-        tx.onabort = function () { reject(tx.error); };
-      });
-    }
-
-    function requestResult(request) {
-      return new Promise(function (resolve, reject) {
-        request.onsuccess = function () { resolve(request.result); };
-        request.onerror = function () { reject(request.error); };
-      });
+      return ClipPadLocal.openDatabase();
     }
 
     async function getAllNotes() {
-      var tx = db.transaction('notes', 'readonly');
-      var notes = await requestResult(tx.objectStore('notes').getAll());
-      notes.sort(function (a, b) {
-        return String(b.updatedAt).localeCompare(String(a.updatedAt));
-      });
-      return notes;
+      return ClipPadLocal.getAllNotes(db);
     }
 
     function getNote(id) {
-      var tx = db.transaction('notes', 'readonly');
-      return requestResult(tx.objectStore('notes').get(id));
+      return ClipPadLocal.getNote(db, id);
     }
 
     async function putNote(note) {
-      var tx = db.transaction('notes', 'readwrite');
-      tx.objectStore('notes').put(note);
-      await txComplete(tx);
+      await ClipPadLocal.putNote(db, note);
     }
 
     async function deleteNote(id) {
-      var tx = db.transaction('notes', 'readwrite');
-      tx.objectStore('notes').delete(id);
-      await txComplete(tx);
+      await ClipPadLocal.deleteNote(db, id);
     }
 
     async function getSetting(key) {
-      var tx = db.transaction('settings', 'readonly');
-      var row = await requestResult(tx.objectStore('settings').get(key));
-      return row ? row.value : null;
+      return ClipPadLocal.getSetting(db, key);
     }
 
     async function setSetting(key, value) {
-      var tx = db.transaction('settings', 'readwrite');
-      tx.objectStore('settings').put({ key: key, value: value });
-      await txComplete(tx);
-    }
-
-    function createNoteID() {
-      return 'note-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+      await ClipPadLocal.setSetting(db, key, value);
     }
 
     function titleFromContent(content) {
-      var firstLine = String(content || '').split(/\n/).map(function (line) {
-        return line.trim();
-      }).filter(Boolean)[0];
-      if (!firstLine) return 'Untitled';
-      return firstLine.length > 52 ? firstLine.slice(0, 49) + '...' : firstLine;
+      return ClipPadLocal.titleFromContent(content);
     }
 
     function formatNoteTime(value) {
@@ -621,6 +862,170 @@
       if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
       return time.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
+  }
+
+  // ---- Note share view ----
+
+  function initNoteShareView() {
+    var copyBtn = document.getElementById('copy-content-btn');
+    var saveBtn = document.getElementById('save-note-share-btn');
+    var pre = document.getElementById('paste-content-text');
+    var feedback = document.getElementById('note-share-feedback');
+
+    if (copyBtn && pre) {
+      copyBtn.addEventListener('click', function () {
+        copyText(pre.textContent, copyBtn, 'Copied!');
+      });
+    }
+
+    if (saveBtn && pre) {
+      saveBtn.addEventListener('click', async function () {
+        saveBtn.disabled = true;
+        setFeedback('Saving to notepad...', '');
+        try {
+          await ClipPadLocal.createLocalNote(pre.textContent, pre.dataset.noteTitle || '');
+          setFeedback('Saved to your notepad.', 'is-success');
+          window.location.href = '/notepad';
+        } catch (_) {
+          saveBtn.disabled = false;
+          setFeedback('Unable to save in this browser.', 'is-error');
+        }
+      });
+    }
+
+    function setFeedback(msg, cls) {
+      if (!feedback) return;
+      feedback.textContent = msg;
+      feedback.className = 'feedback' + (cls ? ' ' + cls : '');
+    }
+  }
+
+  // ---- Share history ----
+
+  function initShareHistory() {
+    var button = document.getElementById('share-history-button');
+    var panel = document.getElementById('share-history-panel');
+    if (!button || !panel) return;
+
+    button.addEventListener('click', function () {
+      if (panel.classList.contains('hidden')) {
+        openShareHistory();
+      } else {
+        closeShareHistory();
+      }
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('.share-history')) closeShareHistory();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closeShareHistory();
+    });
+
+    function openShareHistory() {
+      panel.classList.remove('hidden');
+      button.setAttribute('aria-expanded', 'true');
+      renderShareHistory();
+    }
+
+    function closeShareHistory() {
+      panel.classList.add('hidden');
+      button.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function renderShareHistoryIfOpen() {
+    var panel = document.getElementById('share-history-panel');
+    if (panel && !panel.classList.contains('hidden')) renderShareHistory();
+  }
+
+  async function renderShareHistory() {
+    var list = document.getElementById('share-history-list');
+    if (!list) return;
+    list.textContent = '';
+    try {
+      var rows = await ClipPadLocal.listShareHistory();
+      if (!rows.length) {
+        var empty = document.createElement('p');
+        empty.className = 'share-history-empty';
+        empty.textContent = 'No active links saved in this browser.';
+        list.appendChild(empty);
+        return;
+      }
+      rows.forEach(function (row) {
+        list.appendChild(renderShareHistoryItem(row));
+      });
+    } catch (_) {
+      var error = document.createElement('p');
+      error.className = 'share-history-empty';
+      error.textContent = 'Share history is unavailable in this browser.';
+      list.appendChild(error);
+    }
+  }
+
+  function renderShareHistoryItem(row) {
+    var item = document.createElement('div');
+    item.className = 'share-history-item';
+
+    var main = document.createElement('div');
+    main.className = 'share-history-main';
+
+    var title = document.createElement('div');
+    title.className = 'share-history-title';
+    title.textContent = row.title || shortURL(row.url);
+
+    var meta = document.createElement('div');
+    meta.className = 'share-history-meta';
+    meta.textContent = (row.type === 'note' ? 'Note' : 'Paste') + ' · ' + expiryLabel(row.expiresAt);
+
+    main.appendChild(title);
+    main.appendChild(meta);
+
+    var open = document.createElement('a');
+    open.className = 'button button-secondary button-sm button-icon share-history-action';
+    open.href = row.url;
+    open.title = 'Open link';
+    open.setAttribute('aria-label', 'Open link');
+    open.textContent = 'Open';
+
+    var copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'button button-secondary button-sm button-icon share-history-action';
+    copy.title = 'Copy link';
+    copy.setAttribute('aria-label', 'Copy link');
+    copy.textContent = 'Copy';
+    copy.addEventListener('click', function () {
+      copyText(row.url, copy, 'Copied');
+    });
+
+    item.appendChild(main);
+    item.appendChild(open);
+    item.appendChild(copy);
+    return item;
+  }
+
+  function absoluteURL(path) {
+    return new URL(path, window.location.origin).href;
+  }
+
+  function shortURL(url) {
+    try {
+      var parsed = new URL(url);
+      return parsed.pathname;
+    } catch (_) {
+      return url;
+    }
+  }
+
+  function expiryLabel(value) {
+    var expiresAt = new Date(value);
+    if (isNaN(expiresAt.getTime())) return 'Expires later';
+    var diff = expiresAt.getTime() - Date.now();
+    if (diff <= 0) return 'Expired';
+    if (diff < 3600000) return 'Expires in ' + Math.max(1, Math.ceil(diff / 60000)) + ' min';
+    if (diff < 86400000) return 'Expires in ' + Math.ceil(diff / 3600000) + ' hr';
+    return 'Expires in ' + Math.ceil(diff / 86400000) + ' days';
   }
 
   // ---- QR Code ----
