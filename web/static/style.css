@@ -340,10 +340,15 @@ select {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 1.4em;
+  margin: 0;
+  min-height: 0;
   font-size: 0.85rem;
   color: var(--muted);
   transition: color 0.2s;
+}
+
+.feedback:not(:empty) {
+  margin-top: 8px;
 }
 
 .feedback:not(:empty)::before {
@@ -1089,21 +1094,11 @@ html.notepad-max .notepad-statusbar {
     padding: 14px 0 12px;
     margin-bottom: 22px;
     flex-wrap: wrap;
+    row-gap: 10px;
   }
 
-  .theme-switcher {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .theme-picker-trigger {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .theme-menu {
-    left: 0;
-    right: 0;
+  .nav {
+    order: 99;
     width: 100%;
   }
 
@@ -1119,6 +1114,10 @@ html.notepad-max .notepad-statusbar {
   .form-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .compact {
+    flex: initial;
   }
 
   .button:not(.button-sm) {
